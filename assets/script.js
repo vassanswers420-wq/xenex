@@ -1,31 +1,6 @@
 // COUNTER
 // COUNTER (improved for real-world stats)
-document.querySelectorAll('.counter').forEach(c => {
-  let update = () => {
-    let t = parseFloat(c.dataset.target);
-    let n = parseFloat(c.innerText.replace(/,/g, "")) || 0;
 
-    let inc = t / 200;
-
-    if (n < t) {
-      let value = n + inc;
-
-      // format nicely
-      if (t >= 1000) {
-        c.innerText = Math.floor(value).toLocaleString();
-      } else {
-        c.innerText = value.toFixed(2);
-      }
-
-      setTimeout(update, 10);
-    } else {
-      // final formatting
-      c.innerText = t >= 1000 ? t.toLocaleString() : t;
-    }
-  };
-
-  update();
-});
 
 // DARK MODE
 const btn = document.getElementById("themeToggle");
@@ -75,3 +50,30 @@ const reveal=()=>{
 };
 
 window.addEventListener("scroll",reveal);
+
+document.querySelectorAll('.counter').forEach(c => {
+  let update = () => {
+    let t = parseFloat(c.dataset.target);
+    let n = parseFloat(c.innerText.replace(/,/g, "")) || 0;
+
+    let inc = t / 200;
+
+    if (n < t) {
+      let value = n + inc;
+
+      // format nicely
+      if (t >= 1000) {
+        c.innerText = Math.floor(value).toLocaleString();
+      } else {
+        c.innerText = value.toFixed(2);
+      }
+
+      setTimeout(update, 10);
+    } else {
+      // final formatting
+      c.innerText = t >= 1000 ? t.toLocaleString() : t;
+    }
+  };
+
+  update();
+});

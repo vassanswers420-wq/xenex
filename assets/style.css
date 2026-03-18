@@ -60,8 +60,13 @@ body { font-family: 'Segoe UI', sans-serif; transition: 0.3s; }
 }
 
 /* Racing stripes arrow */
+.btn-race {
+  position: relative; /* make pseudo-element position relative to button */
+  overflow: hidden;
+}
+
 .btn-race::after {
-  content: ' ';
+  content: '\200B'; /* zero-width space */
   position: absolute;
   right: 16px;
   top: 50%;
@@ -75,19 +80,15 @@ body { font-family: 'Segoe UI', sans-serif; transition: 0.3s; }
     rgba(255,255,255,0) 2px 4px
   );
   -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   color: transparent;
   opacity: 0;
   transition: all 0.5s ease;
 }
 
-/* Hover effects */
 .btn-race:hover {
-  background: linear-gradient(90deg, #ff416c, #8e2de2); /* inverted gradient */
+  background: linear-gradient(90deg, #ff416c, #8e2de2);
   transform: scale(1.05);
-}
-
-.btn-race:hover::before {
-  left: 100%;
 }
 
 .btn-race:hover::after {

@@ -46,7 +46,27 @@ body { font-family: 'Segoe UI', sans-serif; transition: 0.3s; }
   transition: all 0.4s ease;
   letter-spacing: 0.5px;
 }
+/* Stats Video Background */
+.stats-video {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  opacity: 0.5; /* Adjust transparency */
+}
 
+#stats .container {
+  position: relative;
+  z-index: 1; /* Make content appear above video */
+}
+
+#stats h2, #stats p, #stats .counter {
+  color: white; /* Ensure text is visible on video */
+}
 /* Moving highlight */
 .btn-race::before {
   content: '';

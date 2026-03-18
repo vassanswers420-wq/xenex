@@ -88,35 +88,39 @@
 </section>
 
 <!-- STATS -->
-<section id="stats" class="py-5 bg-light">
-<div class="container text-center">
-<h2>Market Stats</h2>
+<section id="stats" class="py-5 bg-light position-relative overflow-hidden">
+  <!-- Background Video -->
+  <video autoplay muted loop playsinline class="stats-video">
+    <source src="assets/wack/bg.mp4" type="video/mp4">
+  </video>
 
-<div class="row g-4 mt-4">
+  <div class="container text-center position-relative">
+    <h2 class="text-white">Market Stats</h2>
 
-<div class="col-md-3 reveal">
-  <div class="counter" data-target="63000">0</div>
-  <p>Listed Companies Worldwide</p>
-</div>
+    <div class="row g-4 mt-4">
 
-<div class="col-md-3 reveal">
-  <div class="counter" data-target="95000000">0</div>
-  <p>Daily Trades (Global Avg)</p>
-</div>
+      <div class="col-md-3 reveal">
+        <div class="counter text-white" data-target="63000">0</div>
+        <p class="text-white">Listed Companies Worldwide</p>
+      </div>
 
-<div class="col-md-3 reveal">
-  <div class="counter" data-target="110000000000">0</div>
-  <p>Daily Market Volume ($)</p>
-</div>
+      <div class="col-md-3 reveal">
+        <div class="counter text-white" data-target="95000000">0</div>
+        <p class="text-white">Daily Trades (Global Avg)</p>
+      </div>
 
-<div class="col-md-3 reveal">
-  <div class="counter" data-target="60">0</div>
-  <p>Major Global Exchanges</p>
-</div>
+      <div class="col-md-3 reveal">
+        <div class="counter text-white" data-target="110000000000">0</div>
+        <p class="text-white">Daily Market Volume ($)</p>
+      </div>
 
-</div>
+      <div class="col-md-3 reveal">
+        <div class="counter text-white" data-target="60">0</div>
+        <p class="text-white">Major Global Exchanges</p>
+      </div>
 
-</div>
+    </div>
+  </div>
 </section>
 <div class="button-container">
 	<a href="assets/dashboard.html" class="btn-race mt-3">Get Started</a>

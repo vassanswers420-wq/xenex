@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TixWatcher Trade</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ---------- THEME CLASSES ---------- */
+/* ---------- DEFAULT GREEN-BLACK ---------- */
+body {
+  --bg: #121212;        /* dark background */
+  --text: #00ff66;      /* bright green text */
+  --subtext: #33ff99;   /* lighter green */
+  --panel-bg: #0b0b0b;  
+  --panel-border: #333333;
+  --header-bg: #141414;
+  --footer-bg: #141414;
+  --accent: #00ff66;
+  --accent-hover: #33ff99;
+  --btn-text: #ffffff;
+  --shadow: rgba(0,255,102,0.25);
+}
+
+/* Blue-Gray (keep existing) */
+body.theme-ocean {
+  --bg: #1b1b2f;
+  --text: #66ccff;
+  --subtext: #99ccff;
+  --panel-bg: #2a2a3d;
+  --panel-border: #3a3a5a;
+  --header-bg: #14142b;
+  --footer-bg: #14142b;
+  --accent: #3399ff;
+  --accent-hover: #55bbff;
+  --btn-text: #ffffff;
+  --shadow: rgba(51,153,255,0.25);
+}
+
+
+/* -------- MODERN THEME COLORS -------- */
+body.theme-modern {
+  /* Backgrounds */
+  --bg: #0f121a;          /* dark navy background */
+  --panel-bg: #1b1f28;    /* slightly lighter for panels */
+  --header-bg: #1e2634;   /* top bar/header */
+  --footer-bg: #1e2634;   /* footer */
+  --panel-border: #2e3a50; /* panel border */
+
+  /* Text */
+  --text: #e0e6f0;        /* main text: soft off-white */
+  --subtext: #a0afc5;     /* secondary text: muted gray-blue */
+  --btn-text: #ffffff;    /* buttons text */
+
+  /* Accent colors */
+  --accent: #4fc3f7;      /* bright cyan/blue for highlights */
+  --accent-hover: #80deea; /* hover effect on buttons/panels */
+
+  /* Shadows */
+  --shadow: rgba(0, 160, 220, 0.25); /* soft bluish glow */
+
+  /* Panels & interactive elements */
+  --panel-hover-bg: #283544; /* optional hover background for panels */
+  --panel-header-bg: #1e2634;
+}
+/* ---------- WINDOWS 10 DARK TERMINAL ---------- */
+body.theme-win10dark{
+
+--bg:#1e1e1e;
+--text:#ffffff;
+--subtext:#cfcfcf;
+
+--panel-bg:#252526;
+--panel-border:#3f3f46;
+
+--header-bg:#202020;
+--footer-bg:#202020;
+
+--accent:#0078d7;
+--accent-hover:#005fa3;
+
+--btn-text:#ffffff;
+
+--shadow:rgba(0,120,215,0.25);
+}
+
+
+/* ---------- WINDOWS ME RETRO ---------- */
+body.theme-winme{
+
+--bg:#c0c0c0;
+--text:#111;
+--subtext:#333;
+
+--panel-bg:#ece9d8;
+--panel-border:#000080;
+
+--header-bg:#000080;
+--footer-bg:#000080;
+
+--accent:#000080;
+--accent-hover:#000060;
+
+--btn-text:#ffffff;
+
+--shadow:rgba(0,0,0,0.2);
+}
+
+/* make header text white in WinME */
+body.theme-winme .top-bar{
+  color:#ffffff;
+}
+/* ---------- WINDOWS XP THEME ---------- */
+body.theme-classic {
+  --bg: #c0dfff;        /* XP light blue background */
+  --text: #000000;      /* Black text */
+  --subtext: #333333;   /* Dark gray subtext */
+  --panel-bg: #e5f1ff;  /* Slightly darker panels */
+  --panel-border: #7a7a7a;
+  --header-bg: #3399ff; /* XP top blue bar */
+  --footer-bg: #3399ff;
+  --accent: #0078d7;
+  --accent-hover: #3399ff;
+  --btn-text: #ffffff;
+  --shadow: rgba(0,0,0,0.15);
+}
+
+/* ---------- MONO / NEUTRAL THEME ---------- */
+body.theme-neutral {
+  --bg: #d8d6d6;       /* Light gray background */
+  --text: #1a1a1a;      /* Dark gray text */
+  --subtext: #555555;   /* Medium gray */
+  --panel-bg: #ffffff;  /* White panels */
+  --panel-border: #cccccc;
+  --header-bg: #5c5c5c;
+  --footer-bg: #5c5c5c;
+  --accent: #0078d7;
+  --accent-hover: #3399ff;
+  --btn-text: #ffffff;
+  --shadow: rgba(0,0,0,0.1);
+}
+
+/* ---------- RESET ---------- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ---------- HEADER ---------- */
+header.top-bar {
+  background: var(--header-bg);
+  border-bottom: 2px solid var(--panel-border);
+  height: 60px;
+  padding: 0 15px;
+
+  position: fixed;
+  top: 0; left: 0; width: 100%;
+  z-index: 10;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Right side container */
+.right-group{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+header.top-bar .left{
+  font-family: "Orbitron", sans-serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+/* ---------- FOOTER ---------- */
+footer {
+  height: 60px;          /* fixed height */
+  display: flex;
+  flex-direction: column; /* stack copyright and tabs */
+  justify-content: center; /* vertically center */
+  align-items: center;     /* horizontally center */
+  text-align: center;
+  border-top: 2px solid var(--panel-border);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+  background: var(--footer-bg);
+  padding: 0;            /* remove vertical padding */
+}
+
+/* ---------- CONTENT AREA ---------- */
+.content-area {
+  margin-top: 60px;   /* match header */
+  margin-bottom: 60px; /* match footer */
+  padding: 10px 15px;
+  display: grid;
+  width: 100%;
+  height: calc(100vh - 60px - 60px); /* header + footer */
+  grid-template-columns: 1fr;
+  grid-template-rows: auto;
+  gap: 15px;
+  background: var(--panel-bg);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ---------- FOOTER TABS ---------- */
+.footer-tabs {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-tab {
+ color: var(--btn-text); /* default tab text */
+  padding: 5px 14px;
+  background: var(--panel-bg);
+  border-top: 2px solid #fff;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #404040;
+  border-right: 2px solid #404040;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  border-radius: 2px;
+  transition: all 0.1s;
+  user-select: none;
+}
+footer, 
+footer * {            /* all children inside footer */
+  color: var(--btn-text); /* white text */
+}
+
+.footer-tab:hover {
+  background: var(--accent);
+  color: var(--btn-text);
+}
+
+.footer-tab.active {
+  background: var(--accent);
+  color: var(--btn-text);
+  font-weight: bold;
+  border-top: 2px solid #404040;
+  border-left: 2px solid #404040;
+  border-bottom: 2px solid #fff;
+  border-right: 2px solid #fff;
+}
+
+/* ---------- TAB SECTIONS ---------- */
+.section {
+  display: none;
+  width: 100%;
+  height: 100%;
+  gap: 15px;
+}
+
+.section.active {
+  display: grid;
+  width: 100%;
+  height: 100%;
+}
+
+/* TAB 1: Chart + right panels */
+#tab1.section.active {
+  /* shrink terminal (chart) a bit from sides */
+  grid-template-columns: 1.5fr 1.5fr; /* more balanced width */
+  grid-template-rows: 1fr 1fr;
+  gap: 15px;
+  max-width: 1200px;       /* optional: center terminal horizontally */
+  margin: 0 auto;          /* centers the content area */
+  padding: 0 15px;         /* small padding from sides */
+}
+
+/* TAB 2 */
+#tab2.section.active {
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+/* ---------- MARKET INTEL TAB GRID ---------- */
+#tab3.section.active {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;       /* 3 columns for row 1 */
+  grid-template-rows: auto 2fr 1fr;         /* row heights: small, big, medium */
+  grid-template-areas:
+    "sentiment vix crypto"
+    "news news news"
+    "empty1 empty2 empty2";
+  gap: 15px;
+  height: 100%;
+}
+
+/* Row 1 panels (small info) */
+#tab3 .panel-sentiment { grid-area: sentiment; }
+#tab3 .panel-vix       { grid-area: vix; }
+#tab3 .panel-crypto    { grid-area: crypto; }
+
+/* Row 2: Market News full width */
+#tab3 .panel-news      { grid-area: news; }
+
+/* Row 3: two half panels */
+#tab3 .panel-empty1    { grid-area: empty1; }
+#tab3 .panel-empty2    { grid-area: empty2; }
+
+/* Optional: style empty panels */
+#tab3 .panel-empty1,
+#tab3 .panel-empty2 {
+  border: 2px dashed var(--panel-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--subtext);
+  font-size: 12px;
+}
+
+/* TAB 4 */
+#tab4.section.active {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* ---------- PANELS ---------- */
+.panel {
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  box-shadow: 0 0 8px var(--shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.panel:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 0 14px var(--shadow);
+}
+.panel-header {
+ color: var(--text);
+  padding: 6px 10px;
+  font-weight: bold;
+  font-size: 13px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.panel-body {
+color: var(--subtext);
+
+  flex: 1 1 auto;
+  padding: 10px;
+  overflow: auto; /* scroll content inside panel */
+}
+.content-area {
+  scroll-behavior: smooth;
+}
+.skeleton{
+height:12px;
+background:linear-gradient(
+90deg,
+#222 25%,
+#333 50%,
+#222 75%
+);
+background-size:200% 100%;
+animation:skeletonMove 1.5s infinite;
+border-radius:3px;
+}
+
+@keyframes skeletonMove{
+0%{background-position:200% 0;}
+100%{background-position:-200% 0;}
+}
+/* ---------- TAB1 PANELS ---------- */
+/* Chart panel stays taller */
+#tab1 .panel-chart {
+  grid-column: 1 / 2;
+  grid-row: 1 / 3;
+  min-height: 400px;
+  
+}
+
+/* Calendar wider */
+#tab1 .panel-calendar {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+  min-width: 300px;  /* give more horizontal space */
+}
+
+/* News wider */
+#tab1 .panel-news {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+  min-width: 300px;  /* give more horizontal space */
+}
+
+/* ---------- TAB4 PANELS ---------- */
+#tab4 .panel-sentiment { grid-column:1; grid-row:1; }
+#tab4 .panel-vix { grid-column:1; grid-row:2; }
+#tab4 .panel-crypto { grid-column:1; grid-row:3; }
+#tab4 .panel-news { grid-column:2; grid-row:1 / span 3; }
+
+/* ---------- SETTINGS POPUP ---------- */
+
+#settings-btn {
+  background: transparent;
+  border: none;
+  color: var(--btn-text);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: transform 0.4s ease, color 0.2s ease;
+}
+#settings-btn.active {
+  transform: rotate(90deg) scale(1.2); /* rotates 90° + slightly bigger */
+  color: var(--accent);               /* optional highlight */
+}
+
+#settings-btn:hover {
+  color: var(--accent);      /* subtle highlight on hover */
+}
+.settings-popup {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  padding: 20px;
+  z-index: 100;
+  width: 400px;
+  max-width: 90%;
+  border-radius: 6px;
+  box-shadow: 0 0 15px var(--shadow);
+}
+
+.settings-popup h2 {
+  margin-bottom: 15px;
+  color: var(--text);
+}
+
+.settings-section {
+  border: 1px solid #111;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.section-header {
+  background: var(--header-bg);
+  padding: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--text);
+}
+
+.section-body {
+  padding: 10px;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-body label {
+  display: block;
+  cursor: pointer;
+  color: var(--text);
+}
+
+#close-settings {
+  margin-top: 10px;
+  padding: 8px 15px;
+  cursor: pointer;
+  background: var(--accent);
+  border: none;
+  color: var(--btn-text);
+  font-weight: bold;
+  width: 100%;
+  border-radius: 4px;
+}
+header.top-bar, 
+header.top-bar .left, 
+header.top-bar .right-group {
+  display: flex;           /* enable flex layout */
+  align-items: center;     /* vertically center all items */
+  gap: 10px;               /* optional spacing between items */
+  color: var(--btn-text);  /* text color */
+}
+.chart-frame{
+  width:100%;
+  height:100%;
+  border:none;
+  display:block;
+}
+
+.panel-chart,
+.panel-chart .panel-body{
+  overflow:hidden;
+}
+.calendar-frame{
+  width:100%;
+  height:120%;
+  border:none;
+  transform:translateY(-60px); 
+  overflow: hidden;
+}
+#newsFeed{
+  font-size:12px;
+  line-height:1.4;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.broker-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.broker{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border:1px solid var(--panel-border);
+  padding:8px 10px;
+}
+
+.broker-left{
+  display:flex;
+  flex-direction:column;
+}
+
+.broker-name{
+  font-weight:bold;
+}
+
+.broker-meta{
+  font-size:12px;
+  opacity:0.7;
+}
+
+.broker-actions{
+  display:flex;
+  gap:8px;
+}
+
+.broker-actions a{
+  text-decoration:none;
+  border:1px solid var(--panel-border);
+  padding:3px 8px;
+  color:var(--text);
+}
+
+.broker-actions a:hover{
+  background:var(--accent);
+  color:var(--btn-text);
+}
+.about-content{
+  max-width:600px;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  gap:15px;
+   color: var(--btn-text);
+}
+
+.about-content img{
+  max-width:400px;
+  width:100%;
+  border-radius:15px;
+  box-shadow:0 0 10px var(--shadow);
+}
+
+.about-content a{
+
+  text-decoration:none;
+  background:var(--accent);
+  color:var(--btn-text);
+  padding:8px 16px;
+  border-radius:4px;
+  font-weight:bold;
+}
+
+.about-content a:hover{
+  background:var(--accent-hover);
+}
+
+.info-meta{
+  font-size:12px;
+  opacity:0.6;
+}
+#newsFeed .news-item {
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 4px 6px;
+    cursor: pointer;
+    user-select: text;        /* allows selecting text */
+    border-radius: 3px;
+    transition: background 0.2s, color 0.2s;
+}
+
+#newsFeed .news-item:hover {
+    background: var(--accent);
+    color: var(--btn-text);
+}
+
+.news-time {
+    opacity: 0.6;
+    margin-right: 4px;
+}
+/* Half-moon sentiment meter */
+.sentiment-meter-half {
+  width: 120px;
+  height: 60px;  /* half circle */
+  border-radius: 120px 120px 0 0; /* top half circle */
+  background: conic-gradient(
+    #ff3b3b 0deg,     /* bearish red */
+    #ff3b3b 180deg,   /* default fill (updated by JS) */
+    #0078d7 180deg,   /* bullish blue/green */
+    #0078d7 360deg
+  );
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* Wrapper for small scall indicator */
+.sentiment-scall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* Triangle arrow pointing up/down/left/right */
+.scall-arrow {
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 16px solid #0078d7; /* default: bullish */
+  margin-bottom: 4px;
+  transition: all 0.5s ease;
+}
+
+/* Label below arrow */
+.scall-label {
+  font-weight: bold;
+}
+#tab3 .panel-news .news-item {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 4px 6px;
+  cursor: pointer;
+  user-select: text;
+}
+#tab3 .panel-news .news-item:hover {
+  background: var(--accent);
+  color: var(--btn-text);
+}
+.channel-tab {
+  padding: 4px 10px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.channel-tab:hover {
+  background: var(--accent-hover);
+  color: var(--btn-text);
+}
+
+.channel-tab.active {
+  background: var(--accent);
+  color: var(--btn-text);
+  font-weight: bold;
+  border-color: var(--accent);
+}
+/* ---------- COMMODITY GRID ---------- */
+
+.commodity-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  grid-template-rows:1fr 1fr;
+  gap:8px;
+  height:100%;
+}
+
+.commodity-box{
+  border:1px solid var(--panel-border);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  font-size:12px;
+  padding:6px;
+  background:var(--panel-bg);
+  transition:all 0.2s;
+}
+
+.commodity-box:hover{
+  background:var(--accent);
+  color:var(--btn-text);
+}
+
+.commodity-name{
+  font-weight:bold;
+  font-size:11px;
+  opacity:0.8;
+}
+/* commodity movement */
+
+.commodity-price{
+  font-size:14px;
+  font-weight:bold;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+
+.price-up{
+  color:#00ff66;
+}
+
+.price-down{
+  color:#ff3b3b;
+}
+
+.price-flat{
+  color:#cccc00;
+}
+
+.price-arrow{
+  font-size:12px;
+}
+.breadth-grid{
+display:flex;
+flex-direction:column;
+gap:6px;
+font-size:12px;
+}
+
+.breadth-row{
+display:flex;
+justify-content:space-between;
+border-bottom:1px solid var(--panel-border);
+padding:2px 0;
+}
+
+.breadth-meter{
+height:10px;
+background:#222;
+border:1px solid var(--panel-border);
+margin-top:6px;
+position:relative;
+}
+
+.breadth-fill{
+height:100%;
+background:#00ff66;
+width:50%;
+transition:width 0.5s;
+}
+.panel-controls{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.panel-btn{
+cursor:pointer;
+padding:2px 6px;
+border:1px solid var(--panel-border);
+font-size:12px;
+user-select:none;
+}
+
+.panel-btn:hover{
+background:var(--accent);
+color:var(--btn-text);
+}
+.panel-chart.expanded{
+position:fixed;
+top:0;
+left:0;
+width:100vw;
+height:100vh !important;
+z-index:9999;
+background:var(--panel-bg);
+border:none;
+border-radius:0;
+}
+
+.panel-chart.expanded .panel-body{
+height:calc(100vh - 35px) !important;
+padding:0;
+}
+.panel-chart.expanded .chart-frame{
+width:100%;
+height:100%;
+}
+@media (max-width: 900px){
+
+.panel-chart.expanded{
+height:100dvh; /* fixes mobile browser UI bars */
+}
+
+.panel-chart.expanded .panel-body{
+height:calc(100dvh - 35px);
+}
+
+}
+.mobile-guide{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.8);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:99999;
+}
+
+.mobile-guide-box{
+background:var(--panel-bg);
+border:2px solid var(--panel-border);
+padding:20px;
+width:320px;
+text-align:center;
+border-radius:6px;
+box-shadow:0 0 12px var(--shadow);
+}
+
+.mobile-guide-box h3{
+margin-bottom:10px;
+color:var(--text);
+}
+
+.mobile-steps{
+font-size:13px;
+margin:10px 0;
+line-height:1.5;
+}
+
+.mobile-guide-box button{
+margin-top:10px;
+padding:6px 14px;
+border:none;
+background:var(--accent);
+color:var(--btn-text);
+cursor:pointer;
+font-weight:bold;
+}
+#terminalClock{
+font-size:12px;
+margin-right:10px;
+font-weight:bold;
+opacity:0.8;
+}
+.back-btn{
+  text-decoration:none;
+  color:var(--btn-text);
+  font-size:12px;          /* smaller */
+  padding:3px 8px;         /* tighter */
+  border:1px solid var(--panel-border);
+  border-radius:3px;
+  white-space:nowrap;      /* prevents breaking */
+  line-height:1;           /* prevents vertical stretch */
+}
+.right-group{
+  max-width: 60%;
+  overflow: hidden;
+}
+@media (max-width: 600px){
+  .back-btn{
+    font-size: 0; /* hide text */
+    padding:4px 6px;
+  }
+
+  .back-btn::before{
+    content: "←";
+    font-size:14px;
+  }
+}
+.back-btn:hover{
+  background:var(--accent);
+  color:var(--btn-text);
+}
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 900px) {
+  .content-area {
+    display: flex !important;
+    flex-direction: column;
+    height: calc(100vh - 60px - 60px); /* header + footer */
+  }
+  
+  .section.active {
+    display: flex !important;
+    flex-direction: column;
+    gap: 15px; /* spacing between stacked panels */
+  }
+
+  .panel {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 200px;
+  }
+   #tab3.section.active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 10px;
+  }
+
+  /* Small panels on top */
+  #tab3 .panel-sentiment,
+  #tab3 .panel-vix {
+    flex: 0 0 100px;    /* fixed small height */
+    min-height: 80px;   /* prevent collapsing too small */
+  }
+
+  /* Market News gets most of the space */
+  #tab3 .panel-news {
+    flex: 1 1 auto;     /* grow to fill remaining height */
+    min-height: 200px;
+  }
+
+  /* Optional: other panels like crypto or global signals can have modest heights */
+  #tab3 .panel-crypto,
+  #tab3 .panel-global {
+    flex: 0 0 120px;
+  }
+}
+}
+</style>
+</head>
+<body class="theme-win10dark">
+
+<header class="top-bar">
+  <div class="left">TixWatcher(beta)</div>
+
+  <div class="right-group">
+    <div id="marketStatus" style="display:flex; align-items:center; gap:6px;">
+	  <div id="marketLight" style="width:12px; height:12px; border-radius:50%; background:red;"></div>
+	  <span id="marketText" style="font-size:12px; font-weight:bold;">Closed</span>
+	</div>
+	<a href="../index.html" class="back-btn">← Back</a>
+    <button id="settings-btn">⚙️</button>
+  </div>
+
+</header>
+<div class="content-area">
+
+  <!-- TAB 1 -->
+  <div id="tab1" class="section active">
+	<div class="panel panel-chart">
+		<div class="panel-header panel-controls">
+		  <span>Chart</span>
+
+		  <span id="chartExpandBtn" class="panel-btn">⤢</span>
+		</div>
+	  <div class="panel-body">
+		<iframe src="sockets/main.html" class="chart-frame" scrolling="no"></iframe>
+	  </div>
+	</div>
+    <div class="panel panel-calendar">
+	  <div class="panel-header">Calendar</div>
+		  <div class="panel-body">
+			<iframe
+			  class="calendar-frame"
+			  src="https://sslecal2.investing.com"
+			  style="width:100%; height:120%; border:none; transform:translateY(-60px);"
+			  scrolling="yes">
+			</iframe>
+		  </div>
+	</div>
+    <div class="panel panel-news">
+	  <div class="panel-header">Market News</div>
+	  <div class="panel-body" id="newsFeed">
+		<div class="skeleton" style="width:80%"></div>
+		<div class="skeleton" style="width:60%"></div>
+		<div class="skeleton" style="width:90%"></div>
+	  </div>
+	</div>
+  </div>
+
+  <!-- TAB 2 -->
+  <div id="tab2" class="section">
+    <div class="panel panel-brokers">
+	  <div class="panel-header">Broker Directory</div>
+		<div class="panel-body broker-list">
+
+			<div class="broker">
+			  <div class="broker-left">
+				<div class="broker-name">Zerodha</div>
+				<div class="broker-meta">API: Kite Connect</div>
+			  </div>
+			  <div class="broker-actions">
+				<a href="https://kite.zerodha.com" target="_blank">Login</a>
+				<a href="https://zerodha.com/open-account/" target="_blank">Open</a>
+			  </div>
+			</div>
+
+			<div class="broker">
+			  <div class="broker-left">
+				<div class="broker-name">Upstox</div>
+				<div class="broker-meta">API: Upstox API</div>
+			  </div>
+			  <div class="broker-actions">
+				<a href="https://login.upstox.com" target="_blank">Login</a>
+				<a href="https://upstox.com/open-account/" target="_blank">Open</a>
+			  </div>
+			</div>
+
+			<div class="broker">
+			  <div class="broker-left">
+				<div class="broker-name">Angel One</div>
+				<div class="broker-meta">API: SmartAPI</div>
+			  </div>
+			  <div class="broker-actions">
+				<a href="https://trade.angelone.in" target="_blank">Login</a>
+				<a href="https://www.angelone.in/open-demat-account" target="_blank">Open</a>
+			  </div>
+			</div>
+
+			<div class="broker">
+			  <div class="broker-left">
+				<div class="broker-name">Binance</div>
+				<div class="broker-meta">API: Binance API</div>
+			  </div>
+			  <div class="broker-actions">
+				<a href="https://www.binance.com/en/login" target="_blank">Login</a>
+				<a href="https://www.binance.com/en/register" target="_blank">Open</a>
+			  </div>
+			</div>
+
+	  </div>
+	</div>
+    <div class="panel panel-exchange-info">
+		<div class="panel-header">Exchange Connection</div>
+			<div class="panel-body">
+
+			<p><strong>Connection Mode:</strong> External Broker</p>
+			<br>
+			<p>
+			This terminal does <strong>not execute trades directly</strong>.
+			Orders are forwarded to your broker platform.
+			</p>
+<br>
+			<p><strong>Supported Markets</strong></p>
+<br>
+			<ul>
+			  <li>NSE / BSE Equities</li>
+			  <li>Cryptocurrency Exchanges</li>
+			  <li>Forex Liquidity Providers</li>
+			</ul>
+<br>
+			<p style="margin-top:10px;font-size:12px;opacity:0.7;">
+			Broker API credentials are required for automated order routing.
+			You can also use this terminal purely for analysis and execute
+			trades manually on your broker platform.
+			</p>
+
+		  </div>
+	</div>
+ </div>
+
+  <!-- TAB 3 -->
+  <div id="tab3" class="section">
+	<div class="panel panel-sentiment">
+	  <div class="panel-header">Sentiment</div>
+	  <div class="panel-body" style="display:flex; justify-content:center; align-items:center; height:100%;">
+		<div id="sentimentScall" class="sentiment-scall">
+		  <div class="scall-arrow"></div>
+		  <div class="scall-label" id="sentimentText">Loading...</div>
+		</div>
+	  </div>
+	</div>
+    <div class="panel panel-vix">
+  <div class="panel-header">India VIX</div>
+	  <div class="panel-body" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;">
+		<div id="vixValue" style="font-weight:bold; font-size:16px;">--</div>
+		<div id="vixInfo" style="font-size:12px; opacity:0.8;">Loading...</div>
+		<div id="vixTrend" style="font-size:18px;"></div>
+	  </div>
+	</div>
+    <div class="panel panel-crypto"><div class="panel-header">Crypto Market</div><div class="panel-body"></div></div>
+
+	<div class="panel panel-news">
+	  <div class="panel-header">Market News</div>
+		<div class="panel-body" style="display:flex; flex-direction:column; height:100%;">
+		<!-- Horizontal channel tabs -->
+			<div class="channel-tabs" style="display:flex; gap:8px; margin-bottom:6px; justify-content:center;">
+			  <div class="channel-tab active" data-channel="et">ET</div>
+			  <div class="channel-tab" data-channel="moneycontrol">MoneyControl</div>
+			  <div class="channel-tab" data-channel="business-standard">Business Standard</div>
+			</div>
+
+		<!-- News container -->
+		<div id="marketNewsContainer" style="flex:1; overflow:auto;"></div>
+	  </div>
+	</div>
+	<!-- Row 3: empty panels -->
+	<div class="panel panel-global">
+	<div class="panel-header">Global Macro Signals</div>
+
+	<div class="panel-body">
+
+	<div id="oilPrice"><div class="skeleton" style="width:80%"></div>
+<div class="skeleton" style="width:60%"></div>
+<div class="skeleton" style="width:90%"></div></div>
+
+	<div id="spFutures"><div class="skeleton" style="width:80%"></div>
+<div class="skeleton" style="width:60%"></div>
+<div class="skeleton" style="width:90%"></div></div>
+
+	<div id="dxyValue"><div class="skeleton" style="width:80%"></div>
+<div class="skeleton" style="width:60%"></div>
+<div class="skeleton" style="width:90%"></div></div>
+
+	</div>
+	</div>
+ </div>
+
+  <!-- TAB 4 -->
+<div id="tab4" class="section">
+
+  <div class="about-content">
+
+    <img src="wack/dogtag.png" alt="TixWatcher">
+
+		<p style="font-size:12px; font-family: 'Orbitron', sans-serif; opacity:0.7;">
+		  TixWatcher Terminal is proprietary software provided free for personal use.
+		  Unauthorized copying, modification, or redistribution of the source code
+		  is strictly prohibited. © 2026 All Rights Reserved.
+		</p>
+
+    <a href="https://www.instagram.com/oiled_drummer/" target="_blank">
+      Support? Hit IG
+    </a>
+
+    <div class="info-meta">
+      Terminal Version: 0.10<br>
+      Ticker time: 60,000,000 (µs)
+    </div>
+
+  </div>
+
+</div>
+
+<div id="settings-popup" class="settings-popup">
+  <h2>Settings</h2>
+
+
+	<!-- Theme Section -->
+	<div class="settings-section">
+	  <div class="section-header">Themes</div>
+	  <div class="section-body">
+		<label>
+		  <input type="radio" name="theme" value="default">
+		  Green-Black
+		</label>
+		<label>
+		  <input type="radio" name="theme" value="blue">
+		  Ocean
+		</label>
+		<label>
+		  <input type="radio" name="theme" value="win10">
+		  Modern
+		</label>
+		<label>
+		  <input type="radio" name="theme" value="winxp">
+		  Classic
+		</label>
+		<label>
+		  <input type="radio" name="theme" value="mono">
+		  Neutral
+		</label>
+		<label>
+		  <input type="radio" name="theme" value="win10dark" checked>
+		  Win10 Dark
+		</label>
+
+		<label>
+		  <input type="radio" name="theme" value="winme">
+		  Windows ME
+		</label>
+	  </div>
+	</div>
+
+  <!-- Terminal Section -->
+  <div class="settings-section">
+    <div class="section-header">Terminal</div>
+    <div class="section-body">
+      <label>
+        <input type="checkbox" id="show-grid" checked>
+        Show Grid Lines
+      </label>
+      <label>
+        <input type="checkbox" id="show-tooltip" checked>
+        Show Tooltips
+      </label>
+    </div>
+  </div>
+
+  <button id="close-settings">Close</button>
+</div>
+</div>
+
+<footer>
+  <div class="footer-tabs">
+    <div class="footer-tab active" data-target="tab1">Terminal</div>
+    <div class="footer-tab" data-target="tab2">Exchange</div>
+    <div class="footer-tab" data-target="tab3">Market Intel</div>
+    <div class="footer-tab" data-target="tab4">Info</div>
+  </div>
+  © 2026 TixWatcher
+</footer>
+
+<script>
+const footerTabs = document.querySelectorAll(".footer-tab");
+// Load saved theme
+const savedTheme = localStorage.getItem("terminalTheme");
+
+if(savedTheme){
+
+const radio = document.querySelector(`input[value="${savedTheme}"]`);
+
+if(radio) radio.checked = true;
+
+if(savedTheme === "default"){
+document.body.className = "";
+}
+else if(savedTheme === "blue"){
+document.body.className = "theme-ocean";
+}
+else if(savedTheme === "win10"){
+document.body.className = "theme-modern";
+}
+else if(savedTheme === "winxp"){
+document.body.className = "theme-classic";
+}
+else if(savedTheme === "mono"){
+document.body.className = "theme-neutral";
+}
+else if(savedTheme === "win10dark"){
+document.body.className = "theme-win10dark";
+}
+else if(savedTheme === "winme"){
+document.body.className = "theme-winme";
+}
+
+}
+const sections = document.querySelectorAll(".section");
+/* ---------- API CACHE SYSTEM ---------- */
+
+let apiCache = {};
+
+async function cachedFetch(url){
+
+if(apiCache[url] && Date.now() - apiCache[url].time < 20000){
+return apiCache[url].data;
+}
+
+const res = await fetch(url);
+const data = await res.json();
+
+apiCache[url] = {
+time: Date.now(),
+data: data
+};
+
+return data;
+}
+footerTabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    footerTabs.forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+
+    sections.forEach(s => s.classList.remove("active"));
+    document.getElementById(tab.dataset.target).classList.add("active");
+  });
+});
+
+
+const settingsBtn = document.getElementById("settings-btn");
+const settingsPopup = document.getElementById("settings-popup");
+const closeSettings = document.getElementById("close-settings");
+
+// Open popup + rotate gear
+settingsBtn.addEventListener("click", () => {
+  settingsPopup.style.display = "block";
+  settingsBtn.classList.add("active");  // gear rotates
+});
+
+// Close popup + reset gear
+closeSettings.addEventListener("click", () => {
+  settingsPopup.style.display = "none";
+  settingsBtn.classList.remove("active"); // gear back to normal
+});
+// Toggle section dropdowns
+document.querySelectorAll('.section-header').forEach(header => {
+  header.addEventListener('click', () => {
+    const body = header.nextElementSibling;
+    body.style.display = body.style.display === 'flex' ? 'none' : 'flex';
+  });
+});
+
+
+// Theme change
+document.querySelectorAll('input[name="theme"]').forEach(radio => {
+  radio.addEventListener("change", () => {
+
+    // Remove old themes
+    document.body.classList.remove(
+      "theme-ocean",
+      "theme-modern",
+      "theme-classic",
+      "theme-neutral",
+      "theme-win10dark",
+      "theme-winme"
+    );
+
+    // Apply theme
+    if (radio.value === "default") {
+      document.body.className = "";
+    } else if (radio.value === "blue") {
+      document.body.className = "theme-ocean";
+    } else if (radio.value === "win10") {
+      document.body.className = "theme-modern";
+    } else if (radio.value === "winxp") {
+      document.body.className = "theme-classic";
+    } else if (radio.value === "mono") {
+      document.body.className = "theme-neutral";
+    } else if (radio.value === "win10dark") {
+      document.body.className = "theme-win10dark";
+    } else if (radio.value === "winme") {
+      document.body.className = "theme-winme";
+    }
+
+    // ⭐ SAVE THEME HERE
+    localStorage.setItem("terminalTheme", radio.value);
+
+  });
+});
+
+
+async function loadMarketNews(){
+
+const feeds = [
+
+"https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
+"https://www.moneycontrol.com/rss/MCtopnews.xml",
+"https://www.business-standard.com/rss/markets-106.rss"
+
+];
+
+let html="";
+
+for(const feed of feeds){
+
+try{
+
+const res = await fetch(
+`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`
+);
+
+const data = await res.json();
+
+data.items.slice(0,8).forEach(n => {
+    const time = new Date(n.pubDate).toLocaleTimeString();
+    html += `
+    <div class="news-item" data-link="${n.link}">
+        <span class="news-time">[${time}]</span> 
+        <span class="news-title">${n.title}</span>
+    </div>`;
+});
+
+}catch(e){}
+
+}
+
+document.getElementById("newsFeed").innerHTML = html;
+document.querySelectorAll('#newsFeed .news-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const link = item.dataset.link;
+        window.open(link, '_blank'); // open article in new tab// open article in new tab// open article in new tab// open article in new tab
+    });
+});
+}
+
+loadMarketNews();
+setInterval(loadMarketNews,60000);
+
+
+
+function updateScallSentiment(score) {
+  const arrow = document.querySelector(".scall-arrow");
+  const label = document.getElementById("sentimentText");
+
+  if (score <= 30) {             // Bearish
+    arrow.style.borderBottomColor = "#ff3b3b";
+    arrow.style.transform = "rotate(180deg)"; // point down
+    label.innerText = "Bearish";
+  } else if (score < 70) {       // Neutral
+    arrow.style.borderBottomColor = "#cccc00";
+    arrow.style.transform = "rotate(90deg)";  // point sideways
+    label.innerText = "Neutral";
+  } else {                        // Bullish
+    arrow.style.borderBottomColor = "#0078d7";
+    arrow.style.transform = "rotate(0deg)";   // point up
+    label.innerText = "Bullish";
+  }
+}
+
+// Fetch API and update
+async function loadScallSentiment() {
+  try {
+	const data = await cachedFetch("https://api.alternative.me/fng/?limit=1");
+    const score = parseInt(data.data[0].value); // 0–100
+    updateScallSentiment(score);
+  } catch (e) {
+    console.error("Sentiment API error", e);
+  }
+}
+
+
+async function loadGlobalSignals() {
+  try {
+    const urls = {
+      oil: "https://query1.finance.yahoo.com/v8/finance/chart/BZ=F",
+      sp:  "https://query1.finance.yahoo.com/v8/finance/chart/ES=F",
+      dxy: "https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB"
+    };
+
+    const results = {};
+
+    for (const key in urls) {
+      try {
+		const text = await cachedFetch(
+		`https://api.allorigins.win/get?url=${encodeURIComponent(urls[key])}`
+		);
+        const data = JSON.parse(text.contents);
+
+        const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice ?? null;
+        results[key] = price;
+      } catch (e) {
+        console.error(`Error fetching ${key}:`, e);
+        results[key] = null;
+      }
+    }
+
+    document.getElementById("oilPrice").innerText =
+      results.oil !== null ? `Brent: $${results.oil.toFixed(2)}` : "Brent: N/A";
+
+    document.getElementById("spFutures").innerText =
+      results.sp !== null ? `S&P Futures: ${results.sp.toFixed(2)}` : "S&P Futures: N/A";
+
+    document.getElementById("dxyValue").innerText =
+      results.dxy !== null ? `DXY: ${results.dxy.toFixed(2)}` : "DXY: N/A";
+
+  } catch (e) {
+    console.error("Global signals error", e);
+  }
+}
+
+
+let prevVix = null;
+
+async function loadIndiaVIX(){
+
+try{
+
+const data = await cachedFetch(
+"https://api.allorigins.win/raw?url=" +
+encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/%5EINDIAVIX")
+);
+
+const vix = data.chart.result[0].meta.regularMarketPrice;
+
+const valueEl = document.getElementById("vixValue");
+const infoEl = document.getElementById("vixInfo");
+const trendEl = document.getElementById("vixTrend");
+
+valueEl.innerText = `VIX: ${vix.toFixed(2)}`;
+
+let text="";
+let color="";
+
+if(vix < 15){
+text="Low Volatility — Markets Calm";
+color="#00ff66";
+}
+else if(vix < 25){
+text="Moderate Volatility — Watch Market";
+color="#ffcc00";
+}
+else{
+text="High Volatility — Caution Advised";
+color="#ff3b3b";
+}
+
+infoEl.innerText=text;
+infoEl.style.color=color;
+
+if(prevVix !== null){
+  if(vix > prevVix){
+    trendEl.innerHTML = "▲";
+    trendEl.style.color="#ff3b3b";
+  } else if(vix < prevVix){
+    trendEl.innerHTML = "▼";
+    trendEl.style.color="#00ff66";
+  } else {
+    trendEl.innerHTML = "■";
+    trendEl.style.color="#cccc00";
+  }
+}
+prevVix = vix;
+}catch(e){
+console.error("VIX API error",e);
+}
+}
+
+
+
+
+async function loadCryptoPrices() {
+  try {
+	const data = await cachedFetch(
+	"https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
+	);
+
+    const btc = data.bitcoin.usd;
+    const eth = data.ethereum.usd;
+
+	document.querySelector(
+	"#tab3 .panel-crypto .panel-body"
+	).innerHTML = `
+	<div class="commodity-grid">
+
+	<div class="commodity-box">
+	<div class="commodity-name">Bitcoin</div>
+	<div class="commodity-price">$${btc.toLocaleString()}</div>
+	</div>
+
+	<div class="commodity-box">
+	<div class="commodity-name">Ethereum</div>
+	<div class="commodity-price">$${eth.toLocaleString()}</div>
+	</div>
+
+	</div>
+	`;
+  } catch (e) {
+    console.error("Crypto API error", e);
+  }
+}
+
+
+
+
+
+
+// ----------------------------
+// Market Intel News Module
+// ----------------------------
+
+const newsFeeds = {
+  et: "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
+  moneycontrol: "https://www.moneycontrol.com/rss/MCtopnews.xml",
+  "business-standard": "https://www.business-standard.com/rss/markets-106.rss"
+};
+
+const newsContainer = document.getElementById("marketNewsContainer");
+const channelTabs = document.querySelectorAll(".channel-tab");
+let currentChannel = "et"; // default feed
+
+/**
+ * Fetch and display RSS feed items for a given channel
+ * @param {string} channel - key from newsFeeds
+ */
+async function loadMarketIntelNews(channel) {
+  const feedUrl = newsFeeds[channel];
+  if (!feedUrl) return;
+
+  // Use AllOrigins proxy to bypass CORS
+  const proxy = "https://api.allorigins.win/get?url=";
+
+  try {
+    const res = await fetch(proxy + encodeURIComponent(feedUrl));
+    const data = await res.json();
+
+    // Parse XML from proxy response
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(data.contents, "text/xml");
+
+    // RSS item nodes
+    const items = xml.querySelectorAll("item");
+    if (!items || items.length === 0) {
+      newsContainer.innerHTML = "No news available.";
+      return;
+    }
+
+    let html = "";
+
+    items.forEach((item, idx) => {
+      if (idx >= 15) return; // max 15 items
+      const titleNode = item.querySelector("title");
+      const linkNode = item.querySelector("link");
+      const dateNode = item.querySelector("pubDate");
+
+      const title = titleNode ? titleNode.textContent : "No title";
+      const link = linkNode ? linkNode.textContent : "#";
+      const pubDate = dateNode
+        ? new Date(dateNode.textContent).toLocaleTimeString()
+        : "";
+
+      html += `
+        <div class="news-item" data-link="${link}">
+          <span class="news-time">[${pubDate}]</span>
+          <span class="news-title">${title}</span>
+        </div>
+      `;
+    });
+
+    newsContainer.innerHTML = html;
+
+    // Add click event to open news links
+    newsContainer.querySelectorAll(".news-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const link = item.dataset.link;
+        if (link && link !== "#") window.open(link, "_blank");
+      });
+    });
+  } catch (err) {
+    console.error("Market Intel news error:", err);
+    newsContainer.innerHTML = "Failed to load news.";
+  }
+}
+
+// ----------------------------
+// Initialize: load default channel
+// ----------------------------
+loadMarketIntelNews(currentChannel);
+
+// Reload every 60 seconds
+setInterval(() => loadMarketIntelNews(currentChannel), 60000);
+
+// ----------------------------
+// Handle channel tab clicks
+// ----------------------------
+channelTabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    // Remove active from all tabs
+    channelTabs.forEach(t => t.classList.remove("active"));
+    // Add active to clicked tab
+    tab.classList.add("active");
+
+    // Update current channel and reload news
+    currentChannel = tab.dataset.channel;
+    loadMarketIntelNews(currentChannel);
+  });
+});
+
+
+
+// Example: send new candle data to iframe
+function sendCandleToChart(candle) {
+  chartFrame.contentWindow.postMessage(
+    { type: "newCandle", payload: candle },
+    "*"
+  );
+}
+
+// Example usage:
+const chartFrame = document.querySelector(".chart-frame");
+
+chartFrame.onload = () => {
+
+sendCandleToChart({
+time: Date.now(),
+open:100,
+high:105,
+low:98,
+close:102,
+volume:1500
+});
+
+};
+
+// Example: send support/resistance update
+function sendSRLevels(levels) {
+  chartFrame.contentWindow.postMessage(
+    { type: "updateSR", payload: levels },
+    "*"
+  );
+}
+
+// Example: send indicator update
+function sendIndicator(name, value) {
+  chartFrame.contentWindow.postMessage(
+    { type: "indicator", payload: { name, value } },
+    "*"
+  );
+}
+const calendarFrame = document.querySelector(".calendar-frame");
+
+// Reload calendar every 60 seconds
+setInterval(() => {
+  const src = calendarFrame.src;
+  calendarFrame.src = src;
+}, 60000); // 1 minute
+
+
+
+let prevCommodity = {
+  gold:null,
+  silver:null,
+  crude:null,
+  gas:null
+};
+
+
+
+
+
+const chartPanel = document.querySelector(".panel-chart");
+const chartExpandBtn = document.getElementById("chartExpandBtn");
+
+chartExpandBtn.addEventListener("click", () => {
+
+if(chartPanel.classList.contains("expanded")){
+
+chartPanel.classList.remove("expanded");
+chartExpandBtn.textContent = "⤢";
+
+}else{
+
+chartPanel.classList.add("expanded");
+chartExpandBtn.textContent = "⤡";
+
+}
+
+});
+let intelBusy=false;
+
+async function refreshIntel(){
+
+if(intelBusy) return;
+intelBusy=true;
+
+await loadScallSentiment();
+await loadIndiaVIX();
+await loadCryptoPrices();
+await loadGlobalSignals();
+
+intelBusy=false;
+
+}
+
+/* first run immediately */
+
+refreshIntel();
+
+
+
+/* refresh every 30s */
+
+window.addEventListener('DOMContentLoaded', () => {
+    refreshIntel();
+    setInterval(refreshIntel,30000);
+});
+
+function detectMobileDevice(){
+
+const isMobile =
+/Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i
+.test(navigator.userAgent);
+
+if(isMobile){
+
+document.getElementById("mobileGuide").style.display="flex";
+
+}
+
+}
+
+detectMobileDevice();
+
+document.getElementById("mobileGuideClose").onclick=()=>{
+document.getElementById("mobileGuide").style.display="none";
+};
+function updateMarketStatus() {
+
+  const now = new Date(); // already IST ✅
+
+  const day = now.getDay();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+
+  const currentMinutes = hours * 60 + minutes;
+
+  const openMinutes = 9 * 60 + 15;
+  const closeMinutes = 15 * 60 + 30;
+
+  const isWeekday = day >= 1 && day <= 5;
+  const isOpenTime = currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+
+  const isOpen = isWeekday && isOpenTime;
+
+  const light = document.getElementById("marketLight");
+  const text = document.getElementById("marketText");
+
+  if (isOpen) {
+    light.style.background = "#00ff66";
+    text.innerText = "Open";
+  } else {
+    light.style.background = "#ff3b3b";
+    text.innerText = "Closed";
+  }
+}
+
+// Update every 30 seconds
+updateMarketStatus();
+setInterval(updateMarketStatus, 30000);
+
+</script>
+<div id="mobileGuide" class="mobile-guide">
+  <div class="mobile-guide-box">
+
+    <h3>Desktop Mode Recommended</h3>
+
+    <p>
+      Avalanche Terminal is designed for desktop screens.
+    </p>
+
+    <p>
+      For the best experience on mobile, enable <b>Desktop Site</b> in your browser.
+    </p>
+
+    <div class="mobile-steps">
+      <p><b>Chrome / Edge</b></p>
+      <p>Tap <b>⋮ menu → Desktop Site</b></p>
+
+      <p><b>Safari</b></p>
+      <p>Tap <b>aA → Request Desktop Website</b></p>
+    </div>
+
+    <button id="mobileGuideClose">Continue Anyway</button>
+
+  </div>
+</div>
+</body>
+</html>

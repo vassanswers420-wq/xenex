@@ -174,7 +174,20 @@ body.dark-mode footer {
 body.dark-mode .feature-icon {
   color: #00ffaa;
 }
+#showcase img {
+  transition: 0.3s;
+  width: 70%;
+  display: block;
+  margin: auto;
+}
 
+#showcase img:hover {
+  transform: scale(1.03);
+}
+
+#showcase h3 {
+  font-weight: 600;
+}
 /* HOVER */
 .col-md-4 {
   transition: 0.3s;

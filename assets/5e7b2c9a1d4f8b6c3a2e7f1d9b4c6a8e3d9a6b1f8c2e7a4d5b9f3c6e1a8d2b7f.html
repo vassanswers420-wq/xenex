@@ -129,6 +129,21 @@ body {
   font-size: 13px;
   opacity: 0.7;
 }
+
+.fundamental-section .learn-card i {
+  color: #4da3ff;
+}
+
+.fundamental-section .learn-card:hover {
+  color: #4da3ff;
+  box-shadow: 0 10px 25px rgba(77, 163, 255, 0.25);
+  background: rgba(77,163,255,0.08);
+}
+
+/* Optional: subtle border tint */
+.fundamental-section .learn-card {
+  border: 1px solid rgba(77,163,255,0.15);
+}
 @media (max-width: 768px) {
   .learn-hero {
     padding: 50px 15px;
@@ -154,7 +169,7 @@ body {
 <!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
   <div class="container">
-    <a class="navbar-brand" href="../index.html">TixWatcher</a>
+    <a class="navbar-brand" href="../index.html">TixWatcher - Learn Hub</a>
 
     <div class="ms-auto">
       <a href="../index.html" class="btn btn-sm btn-outline-light me-2">Home</a>
@@ -215,14 +230,14 @@ body {
     <div class="col-md-4">
       <a href="learn/retail-vs-institutional.html" class="learn-card">
         <i class="fa-solid fa-users"></i>
-        <h5>Retail vs Institutional</h5>
+        <h5>Retail vs Institutional(The big boys)</h5>
         <p>Discover who moves the market and how it affects trading.</p>
       </a>
     </div>
   </div>
 
   <!-- TECHNICAL -->
-  <h4 class="category-title">Technical Analysis</h4>
+  <h4 class="category-title">Technical Analysis (Reading charts)</h4>
   <div class="row g-4">
     <div class="col-md-4">
       <a href="learn/candlesticks.html" class="learn-card">
@@ -235,7 +250,7 @@ body {
     <div class="col-md-4">
       <a href="learn/trends.html" class="learn-card">
         <i class="fa-solid fa-arrow-trend-up"></i>
-        <h5>Trends</h5>
+        <h5>Identifying Trends</h5>
         <p>Identify market direction and momentum effectively.</p>
       </a>
     </div>
@@ -251,7 +266,7 @@ body {
     <div class="col-md-4">
       <a href="learn/indicators.html" class="learn-card">
         <i class="fa-solid fa-chart-area"></i>
-        <h5>Indicators</h5>
+        <h5>Exploring Indicators</h5>
         <p>Learn RSI, MACD, Moving Averages, and more.</p>
       </a>
     </div>
@@ -279,34 +294,73 @@ body {
     <div class="col-md-4">
       <a href="learn/psychology.html" class="learn-card">
         <i class="fa-solid fa-brain"></i>
-        <h5>Trading Psychology</h5>
+        <h5>Psychology for Trading</h5>
         <p>Master discipline, emotions, and mindset.</p>
       </a>
     </div>
   </div>
 
   <!-- SETUP -->
-  <h4 class="category-title">Setting Things Up</h4>
+  <h4 class="category-title">Setting Things Up (Finale)</h4>
   <div class="row g-4 mb-5">
     <div class="col-md-4">
       <a href="learn/choosing-market.html" class="learn-card">
         <i class="fa-solid fa-globe"></i>
-        <h5>Selecting Markets</h5>
-        <p>Choose markets based on your style and risk appetite.</p>
+        <h5>Exploring Markets</h5>
+        <p>Choose markets based on your tolerance and risk appetite.</p>
       </a>
     </div>
 
     <div class="col-md-4">
       <a href="learn/broker.html" class="learn-card">
         <i class="fa-solid fa-building-columns"></i>
-        <h5>Preferred Broker</h5>
-        <p>Pick brokers that fit your market, style, and account size.</p>
+        <h5>Selecting Broker</h5>
+        <p>Pick brokers that fit your market and style.</p>
       </a>
     </div>
   </div>
 
 </div>
+<!-- EXTRAS -->
+<div class="container fundamental-section">
+  <h4 class="category-title">Fundamental Analysis (Dissecting Company Docs)</h4>
 
+  <div class="row g-4 mb-5 justify-content-center">
+
+    <div class="col-md-4">
+      <a href="learn/balancesheet.html" class="learn-card">
+        <i class="fa-solid fa-file-lines"></i>
+        <h5>Balance Sheet Basics</h5>
+        <p>Learn how to read assets, liabilities, and overall company health.</p>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a href="learn/financials.html" class="learn-card">
+        <i class="fa-solid fa-chart-pie"></i>
+        <h5>Financial Statements</h5>
+        <p>Understand income statements, cash flow, and profits.</p>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a href="learn/comanalysis.html" class="learn-card">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <h5>Company Analysis</h5>
+        <p>Learn how to evaluate companies before investing.</p>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a href="learn/annualreports.html" class="learn-card">
+        <i class="fa-solid fa-book-open"></i>
+        <h5>Reading Annual Reports</h5>
+        <p>Decode company reports and management insights.</p>
+      </a>
+    </div>
+
+  </div>
+</div>
 <!-- POPULAR TOPICS -->
 <section class="py-5 popular-section">
   <div class="container">

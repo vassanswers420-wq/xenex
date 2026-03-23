@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TixWatcher | Stock Tracking, Learning and Market Analysis Platform</title>
+<!-- SEO Meta -->
+<meta name="description" content="TixWatcher is a real-time stock market tracking platform with advanced charts, algorithmic indicators, and market insights for traders and investors.">
+
+<meta name="keywords" content="stock market, trading platform, stock analysis, live charts, algo trading, indicators, crypto tracking, market analysis">
+
+<meta name="author" content="TixWatcher">
+<meta name="robots" content="index, follow">
+<!-- Open Graph (for Google + social) -->
+<meta property="og:title" content="TixWatcher - Track Stocks & Analyze Markets">
+<meta property="og:description" content="Real-time stock tracking, advanced indicators, and professional trading tools.">
+<meta property="og:image" content="https://tixwatcher.com/assets/wack/logo.png">
+<meta property="og:url" content="https://tixwatcher.com">
+<meta property="og:type" content="website">
+<!-- Favicon (browser + Google search icon) -->
+<link rel="icon" type="image/png" href="/assets/wack/logo.png">
+<link rel="shortcut icon" href="/assets/wack/logo.png">
+
+<!-- Apple devices -->
+<link rel="apple-touch-icon" href="/assets/wack/logo.png">
+
+<!-- Theme color -->
+<meta name="theme-color" content="#0f1115">
+
+<!-- Google Logo (SEO) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "TixWatcher",
+  "url": "https://tixwatcher.com",
+  "description": "Real-time stock tracking, learning and market analysis platform with advanced indicators and trading tools.",
+  "logo": "https://tixwatcher.com/assets/wack/logo.png"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How do I track a stock?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Search for a stock symbol in the dashboard to view charts and analytics."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is the market data real-time?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, TixWatcher provides real-time market data with minimal latency."
+      }
+    }
+  ]
+}
+</script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+<link rel="stylesheet" href="assets/style.css">
+
+</head>
+
+<body class="dark-mode">
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+  <div class="container d-flex align-items-center">
+
+   <a class="navbar-brand d-flex align-items-center" href="#">
+	  <img src="assets/wack/logo.png" alt="logo" class="brand-logo me-2">
+	  <span class="brand-text">TixWatcher</span>
+	</a>
+
+    <div class="d-flex align-items-center ms-auto">
+      <button id="themeToggle" class="btn btn-sm btn-outline-light rounded-circle me-2">
+        <i id="themeIcon" class="fa-solid fa-moon"></i>
+      </button>
+
+      <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#nav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+    </div>
+
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="#features">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="assets/a9f4d2b87c1e6f34d2a9b8e7c5f1a3d23d9a6b1f8c2e7a4d5b9f3c6e1a8d2b7f.html">Dashboard</a></li>
+		<li class="nav-item"><a class="nav-link" href="learn/">Learn</a></li>
+        <li class="nav-item"><a class="nav-link" href="#stats">Stats</a></li>
+        <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
+        
+      </ul>
+    </div>
+
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <video autoplay muted loop playsinline class="hero-video">
+    <source src="assets/wack/logo.mp4">
+  </video>
+  <div class="hero-overlay"></div>
+
+  <div class="hero-content">
+    <h1 class="display-4">
+  TixWatcher – Real-Time Stock Tracking & Market Analysis Platform
+</h1>
+    <p>Real-time data • Algo insights • Pro tools</p>
+    <a href="#features" class="btn btn-light mt-3">Features</a>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="py-5">
+<div class="container text-center">
+<h2 class="mb-4">Features</h2>
+<div class="row g-4">
+
+<div class="col-md-4 reveal">
+<i class="fa-solid fa-chart-line feature-icon mb-3"></i>
+<h5>Charts</h5>
+<p>Multi-timeframe charts with tick updates</p>
+</div>
+
+<div class="col-md-4 reveal">
+<i class="fa-solid fa-wave-square feature-icon mb-3"></i>
+<h5>Quant Indicators</h5>
+<p>Auto S/R & Algorithm signals</p>
+</div>
+
+<div class="col-md-4 reveal">
+<i class="fa-solid fa-shield-halved feature-icon mb-3"></i>
+<h5>Security</h5>
+<p>Encrypted data with active broker integration</p>
+</div>
+
+</div>
+</div>
+</section>
+
+<!-- FEATURE SHOWCASE -->
+<!-- FEATURE SHOWCASE -->
+<section id="showcase" class="py-5 bg-dark text-light">
+  <div class="container">
+    <h2 class="text-center mb-5">Platform Highlights</h2>
+
+    <!-- Feature 1: Advanced Charting Platform -->
+    <div class="row align-items-center mb-5 reveal">
+      <div class="col-md-6">
+        <img src="assets/wack/2display.PNG" class="img-fluid rounded shadow" alt="Advanced Charting">
+      </div>
+      <div class="col-md-6">
+        <h3>Advanced Charting Platform</h3>
+        <p>
+          Real-time charts powered by algorithmic insights. Analyze trends,
+          detect key levels, and execute smarter trades with precision tools
+          built for modern traders.
+        </p>
+      </div>
+    </div>
+
+    <!-- Feature 2: Learn Trading the Right Way -->
+    <div class="row align-items-center mb-5 flex-md-row-reverse reveal">
+      <div class="col-md-6">
+        <img src="assets/wack/display.PNG" class="img-fluid rounded shadow" alt="Learn Trading">
+      </div>
+      <div class="col-md-6">
+        <h3>Learn Trading the Right Way</h3>
+        <p>
+          Master the markets with structured lessons covering everything from basics
+          to advanced strategies. Built for beginners, designed for real-world trading.
+        </p>
+        <a href="learn/" class="btn btn-primary mt-2">Go to Learn</a>
+      </div>
+    </div>
+
+    <!-- Feature 3: Powerful Dashboard -->
+    <div class="row align-items-center mb-5 reveal">
+      <div class="col-md-6">
+        <img src="assets/wack/3display.PNG" class="img-fluid rounded shadow" alt="Dashboard">
+      </div>
+      <div class="col-md-6">
+        <h3>Powerful Dashboard</h3>
+        <p>
+          Track stocks, crypto, and indices in one place with a fast,
+          responsive and intuitive dashboard.
+        </p>
+        <a href="assets/a9f4d2b87c1e6f34d2a9b8e7c5f1a3d23d9a6b1f8c2e7a4d5b9f3c6e1a8d2b7f.html" class="btn btn-primary mt-2">Go to Dashboard</a>
+      </div>
+    </div>
+
+  </div>
+</section>
+<!-- STATS -->
+<section id="stats" class="py-5 bg-light">
+  <div class="container text-center">
+    <h2>Worldwide</h2>
+
+    <div class="row g-4 mt-4">
+
+      <div class="col-md-3 reveal">
+        <div class="counter" data-target="63000">0</div>
+        <p>Listed Companies Globally</p>
+      </div>
+
+      <div class="col-md-3 reveal">
+        <div class="counter" data-target="95000000">0</div>
+        <p>Daily Trade count</p>
+      </div>
+
+      <div class="col-md-3 reveal">
+        <div class="counter" data-target="110000000000">0</div>
+        <p>Daily Market Volume ($)</p>
+      </div>
+
+      <div class="col-md-3 reveal">
+        <div class="counter" data-target="60">0</div>
+        <p>Global Exchanges</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="py-5">
+<div class="container">
+<h2 class="text-center mb-4">FAQ</h2>
+
+<div class="accordion">
+
+  <div class="accordion-item reveal">
+    <button class="faq-button" data-bs-toggle="collapse" data-bs-target="#q1">
+      How do I track a stock?
+    </button>
+    <div id="q1" class="collapse">
+      <div class="accordion-body">
+        Simply search for the stock symbol in the dashboard and view real-time charts and analytics.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item reveal">
+    <button class="faq-button" data-bs-toggle="collapse" data-bs-target="#q2">
+      Is the market data real-time?
+    </button>
+    <div id="q2" class="collapse">
+      <div class="accordion-body">
+        Yes, TixWatcher streams tick-level market data with polling latency dependent on exchange feeds.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item reveal">
+    <button class="faq-button" data-bs-toggle="collapse" data-bs-target="#q3">
+      Can I set price alerts?
+    </button>
+    <div id="q3" class="collapse">
+      <div class="accordion-body">
+        The site is currently on beta features will be added timely.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item reveal">
+    <button class="faq-button" data-bs-toggle="collapse" data-bs-target="#q4">
+      Is my data secure?
+    </button>
+    <div id="q4" class="collapse">
+      <div class="accordion-body">
+        We use modern encryption and security practices to ensure your data is protected.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item reveal">
+    <button class="faq-button" data-bs-toggle="collapse" data-bs-target="#q5">
+      Do I need trading experience?
+    </button>
+    <div id="q5" class="collapse">
+      <div class="accordion-body">
+        No. Beginners can easily use the platform, while advanced traders get powerful tools.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item reveal">
+    <button class="faq-button" data-bs-toggle="collapse" data-bs-target="#q6">
+     Who is TixWatcher For?
+    </button>
+    <div id="q6" class="collapse">
+      <div class="accordion-body">
+       Our platform is built for day traders, swing traders, long-term investors, and beginners looking to understand the stock market.
+      </div>
+    </div>
+  </div>
+  
+  <div class="accordion-item reveal">
+    <button class="faq-button" data-bs-toggle="collapse" data-bs-target="#q6">
+      Which markets are supported?
+    </button>
+    <div id="q7" class="collapse">
+      <div class="accordion-body">
+        We support global markets including stocks, crypto, indices, and commodities.
+      </div>
+    </div>
+  </div>
+  
+</div>
+
+</div>
+</section>
+<section class="py-5">
+  <div class="container">
+    <h2>About TixWatcher</h2>
+    <p>
+      TixWatcher is a modern stock market analysis platform designed for traders and investors who want real-time insights. 
+      Our platform provides advanced charting tools, algorithm-based indicators, and live market tracking across global exchanges.
+    </p>
+
+    <p>
+      Whether you're a beginner learning technical analysis or a professional trader using quantitative strategies, 
+      TixWatcher delivers the tools you need to make smarter trading decisions.
+    </p>
+
+  </div>
+</section>
+<!-- FOOTER -->
+<footer id="contact">
+<div class="container text-center">
+<p>© 2026 TixWatcher</p>
+</div>
+</footer>
+<div id="themeLoader" class="theme-loader">
+  <div class="dots">
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<!-- BOOTSTRAP -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- YOUR JS -->
+<script src="assets/script.js"></script>
+
+
+</body>
+</html>

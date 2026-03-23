@@ -81,6 +81,44 @@ footer {
 html {
   scroll-behavior: smooth;
 }
+
+.theme-trading {
+  border: 1px solid rgba(77,163,255,0.2);
+}
+.theme-trading i {
+  color: #4da3ff;
+}
+.theme-trading:hover {
+  color: #4da3ff;
+  background: rgba(77,163,255,0.08);
+  box-shadow: 0 10px 25px rgba(77,163,255,0.25);
+}
+
+
+.theme-investing {
+  border: 1px solid rgba(0,255,204,0.2);
+}
+.theme-investing i {
+  color: #00ffcc;
+}
+.theme-investing:hover {
+  color: #00ffcc;
+  background: rgba(0,255,204,0.08);
+  box-shadow: 0 10px 25px rgba(0,255,204,0.25);
+}
+
+
+.theme-risk {
+  border: 1px solid rgba(255,77,109,0.2);
+}
+.theme-risk i {
+  color: #ff4d6d;
+}
+.theme-risk:hover {
+  color: #ff4d6d;
+  background: rgba(255,77,109,0.08);
+  box-shadow: 0 10px 25px rgba(255,77,109,0.25);
+}
 </style>
 
 </head>
@@ -129,29 +167,29 @@ html {
 
     <div class="row g-4 mt-4">
 
-      <div class="col-md-4">
-        <a href="trading/" class="learn-card">
-          <i class="fa-solid fa-chart-line"></i>
-          <h4 class="mt-2">Trading</h4>
-          <p>Short-term strategies, reading charts, technical analysis, fast execution and high risk</p>
-        </a>
-      </div>
+		<div class="col-md-4">
+		  <a href="trading/" class="learn-card theme-trading">
+			<i class="fa-solid fa-chart-line"></i>
+			<h4 class="mt-2">Trading</h4>
+			<p>Short-term strategies, reading charts, technical analysis, fast execution and high risk</p>
+		  </a>
+		</div>
 
-      <div class="col-md-4">
-        <a href="investing/" class="learn-card">
-          <i class="fa-solid fa-building"></i>
-          <h4 class="mt-2">Investing</h4>
-          <p>Understand businesses, financials documents, press release, and long-term growth</p>
-        </a>
-      </div>
+		<div class="col-md-4">
+		  <a href="investing/" class="learn-card theme-investing">
+			<i class="fa-solid fa-building"></i>
+			<h4 class="mt-2">Investing</h4>
+			<p>Understand businesses, financials documents, press release, and long-term growth</p>
+		  </a>
+		</div>
 
-      <div class="col-md-4">
-        <a href="risk/" class="learn-card">
-          <i class="fa-solid fa-brain"></i>
-          <h4 class="mt-2">Core Skills</h4>
-          <p>Risk management, psychology, and discipline mastery - everyone needs it doesnt matter the style</p>
-        </a>
-      </div>
+		<div class="col-md-4">
+		  <a href="risk/" class="learn-card theme-risk">
+			<i class="fa-solid fa-brain"></i>
+			<h4 class="mt-2">Core Skills</h4>
+			<p>Risk management, psychology, and discipline mastery - everyone needs it doesnt matter the style</p>
+		  </a>
+		</div>
 
     </div>
   </div>

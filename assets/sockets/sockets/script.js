@@ -45,7 +45,8 @@ const idleDelay = 2000; // 5 seconds
 let allCandles = []; // raw 1-min candles
 let currentTF = 1;   // default timeframe
 let alpBlink = 0;
-
+let cachedZones = [];
+let lastZoneUpdate = 0;
 const smaToggle = document.getElementById('smaToggle');
 const smaPeriod = document.getElementById('smaPeriod');
 const emaToggle = document.getElementById('emaToggle');
@@ -421,7 +422,100 @@ function drawIndicator(values,color){
     });
     ctx.stroke();
 }
+// ==========================
+// 🔥 SMART LIQUIDITY ZONES
+// ==========================
 
+function detectLiquidityPools(data, tolerance = 0.0015) {
+    const pools = [];
+
+    for (let i = 1; i < data.length; i++) {
+        for (let j = i + 1; j < data.length; j++) {
+
+            const highDiff = Math.abs(data[i].high - data[j].high);
+            const lowDiff = Math.abs(data[i].low - data[j].low);
+
+            if (highDiff < data[i].high * tolerance) {
+                pools.push({ price: data[i].high });
+            }
+
+            if (lowDiff < data[i].low * tolerance) {
+                pools.push({ price: data[i].low });
+            }
+        }
+    }
+
+    return pools;
+}
+
+function detectRejections(data) {
+    return data.map(c => {
+
+        const body = Math.abs(c.close - c.open);
+        const upperWick = c.high - Math.max(c.open, c.close);
+        const lowerWick = Math.min(c.open, c.close) - c.low;
+
+        return {
+            high: c.high,
+            low: c.low,
+            rejectHigh: upperWick > body * 2,
+            rejectLow: lowerWick > body * 2
+        };
+    });
+}
+
+function buildZones(levels, tolerance = 0.003) {
+
+    let zones = [];
+
+    levels.forEach(level => {
+
+        let found = false;
+
+        for (let z of zones) {
+
+            const mid = (z.min + z.max) / 2;
+
+            if (Math.abs(level.price - mid) < mid * tolerance) {
+                z.min = Math.min(z.min, level.price);
+                z.max = Math.max(z.max, level.price);
+                z.strength++;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            zones.push({
+                min: level.price,
+                max: level.price,
+                strength: 1
+            });
+        }
+
+    });
+
+    return zones.sort((a,b)=>b.strength - a.strength);
+}
+
+function calculateSmartZones(data){
+
+    const liquidity = detectLiquidityPools(data);
+    const rejections = detectRejections(data);
+
+    let levels = [];
+
+    liquidity.forEach(l => {
+        levels.push({ price: l.price });
+    });
+
+    rejections.forEach(r => {
+        if(r.rejectHigh) levels.push({ price: r.high });
+        if(r.rejectLow) levels.push({ price: r.low });
+    });
+
+    return buildZones(levels).slice(0,3); // max 3 zones only
+}
 // ----------------------------
 // autoscroll
 function smoothScrollTo(targetOffset, duration = 500) {
@@ -454,8 +548,8 @@ function drawChart(){
 	ctx.fillRect(0,0,canvas.width,canvas.height);
 
     // Price & volume ranges
-    let priceMin = Math.min(...candles.map(c=>c.low));
-	let priceMax = Math.max(...candles.map(c=>c.high));
+	const priceMin = Math.min(...candles.map(c=>c.low));
+	const priceMax = Math.max(...candles.map(c=>c.high));
 
 	if(priceMax - priceMin < 0.0001){
 		priceMax += 1;
@@ -579,7 +673,7 @@ function drawChart(){
 	if(emaToggle.checked) drawIndicator(calculateEMA(parseInt(emaPeriod.value)),'#1E90FF');
 	if(vwapToggle.checked) drawIndicator(calculateVWAP(),'#00FFFF');
 
-	updateSupportResistance();
+	updateSmartZones();
 	drawSMTFlash();
 	drawALPZone();
     // Hover marker
@@ -589,6 +683,17 @@ function drawChart(){
         const y=scaleY(c.high)-8;
         ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
     }
+	const sweep = detectLiquiditySweep(candles);
+
+	if(sweep){
+		ctx.fillStyle = sweep === "bullish" ? "#00ff99" : "#ff4444";
+		ctx.font = "14px Arial";
+		ctx.fillText(
+			sweep === "bullish" ? "LIQUIDITY GRAB ↑" : "LIQUIDITY GRAB ↓",
+			100,
+			40
+		);
+	}
 }
 
 
@@ -796,58 +901,67 @@ levels = levels.slice(0, settings.maxLevels);
 drawSR(levels);
 
 }
-function drawSR(levels){
+function drawZones(zones){
 
     const padding = {top:50, bottom:50, left:80, right:20};
     const volumeHeight = 50;
+
     const chartHeight = canvas.height - padding.top - padding.bottom - volumeHeight;
 
     const priceMin = Math.min(...candles.map(c=>c.low));
     const priceMax = Math.max(...candles.map(c=>c.high));
 
-	const visibleRange = (priceMax - priceMin) / priceZoom;
+    const visibleRange = (priceMax - priceMin) / priceZoom;
 
-	const scaleY = price =>
-		padding.top +
-		(priceMax - price) * chartHeight / visibleRange +
-		offsetY;
+    const scaleY = price =>
+        padding.top +
+        (priceMax - price) * chartHeight / visibleRange +
+        offsetY;
+
+    const lastPrice = candles[candles.length - 1].close;
 
     ctx.save();
+    ctx.setLineDash([5,5]); // dotted
 
-	ctx.lineWidth = 1.5;
-	ctx.setLineDash([6,6]);
+    zones.forEach(zone => {
 
-	levels.forEach(level => {
+        // 🔥 center of zone (ONLY ONE LINE)
+        const mid = (zone.min + zone.max) / 2;
 
-		const y = scaleY(level.price);
+        // skip if offscreen
+        if(mid < priceMin || mid > priceMax) return;
 
-		const lastPrice = candles[candles.length - 1].close;
+        const y = scaleY(mid);
 
-		// Detect support or resistance
-		const isResistance = level.price > lastPrice;
+        // 🔥 SUPPORT / RESISTANCE COLOR
+        const isResistance = mid > lastPrice;
 
-		const lineColor = isResistance ? "#ff4444" : "#00ff66";
+        const color = isResistance
+            ? `rgba(255,80,80,${0.4 + zone.strength * 0.1})`   // 🔴 red
+            : `rgba(0,255,140,${0.4 + zone.strength * 0.1})`;  // 🟢 green
 
-		ctx.strokeStyle = lineColor;
+        ctx.strokeStyle = color;
 
-		ctx.beginPath();
-		ctx.moveTo(padding.left, y);
-		ctx.lineTo(canvas.width - padding.right, y);
-		ctx.stroke();
+        // 🔥 thickness = strength
+        ctx.lineWidth = Math.min(1 + zone.strength * 0.5, 3);
 
-		ctx.fillStyle = lineColor;
-		ctx.font = "11px Arial";
-		ctx.textAlign = "left";
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(canvas.width - padding.right, y);
+        ctx.stroke();
 
-		const label = level.price.toFixed(2) + " (" + level.touches + ")";
-		const textWidth = ctx.measureText(label).width;
+        // 🔥 LABEL (small but powerful)
+        ctx.fillStyle = color;
+        ctx.font = "11px Arial";
+        ctx.textAlign = "left";
 
-		ctx.fillText(
-			label,
-			canvas.width - padding.right - textWidth - 5,
-			y - 6
-		);
-	});
+        ctx.fillText(
+            isResistance ? "R" : "S",
+            padding.left + 5,
+            y - 4
+        );
+
+    });
 
     ctx.setLineDash([]);
     ctx.restore();
@@ -1221,4 +1335,38 @@ function getVisibleRange(chartWidth, spacing) {
 		Math.ceil((chartWidth - offsetX) / spacing) + 2
 	);
     return { start, end };
+}
+function updateSmartZones(){
+
+    const settings = getSRSettings();
+    if(!settings.enabled) return;
+
+    const now = Date.now();
+
+    // 🔥 Recalculate only every 2 seconds
+    if(now - lastZoneUpdate > 2000){
+        cachedZones = calculateSmartZones(candles);
+        lastZoneUpdate = now;
+    }
+
+    drawZones(cachedZones);
+}
+function detectLiquiditySweep(data){
+
+    if(data.length < 20) return null;
+
+    const last = data[data.length - 1];
+
+    const prevHigh = Math.max(...data.slice(-20).map(c=>c.high));
+    const prevLow = Math.min(...data.slice(-20).map(c=>c.low));
+
+    if(last.high > prevHigh && last.close < prevHigh){
+        return "bearish";
+    }
+
+    if(last.low < prevLow && last.close > prevLow){
+        return "bullish";
+    }
+
+    return null;
 }

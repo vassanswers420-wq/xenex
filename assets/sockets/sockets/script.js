@@ -6,13 +6,13 @@ const themes = {
         candleUp: "#00ff66",
         candleDown: "#ff4444"
     },
-    midnight: {
-        bg: "#0b0f1a",
-        grid: "#1c2333",
-        text: "#8899aa",
-        candleUp: "#00ffaa",
-        candleDown: "#ff5577"
-    },
+	midnight: {
+		bg: "#ffffff",          // pure white background
+		grid: "#afadad",        // light grid lines
+		text: "#333333",        // dark readable text
+		candleUp: "#16a34a",    // clean green (not neon)
+		candleDown: "#dc2626"   // clean red
+	},
     graphite: {
         bg: "#1a1a1a",
         grid: "#333",
@@ -83,7 +83,7 @@ async function loadCandles(symbol){
 			time: +c.time
 		}));
 		currentTF = parseInt(document.getElementById('tfSelect').value) || 1;
-		aggregateCandles();           // build candles array for selected TF
+		candles = aggregateCandles();     // build candles array for selected TF
 
         // Auto-scroll to newest candle in the MIDDLE of canvas
         const spacing = candleWidth * 1.5;
@@ -106,60 +106,68 @@ window.addEventListener("load", resizeCanvas);
 
 // --- Aggregate candles function ---
 function aggregateCandles() {
-    if (!allCandles || allCandles.length === 0) return;
-    
-    const tf = currentTF; // in minutes
-    if(tf === 1){
-        candles = [...allCandles]; // just copy raw data
-        drawChart();
-        return;
-    }
-    
-    let aggregated = [];
-    for (let i = 0; i < allCandles.length; i += tf) {
-        const slice = allCandles.slice(i, i + tf);
-        if(slice.length === 0) continue;
+    const tf = currentTF;
 
-        const o = slice[0].open;
-        const c = slice[slice.length - 1].close;
-        const h = Math.max(...slice.map(c => c.high));
-        const l = Math.min(...slice.map(c => c.low));
-        const v = slice.reduce((sum, c) => sum + (c.volume || 0), 0);
-        const t = slice[slice.length - 1].time;
+    if (tf === 1) return allCandles;
 
-        aggregated.push({open: o, high: h, low: l, close: c, volume: v, time: t});
-    }
+    const aggregated = [];
+    let current = null;
+    let count = 0;
 
-    // --- Add in-progress candle if slice is incomplete ---
-    const remainder = allCandles.length % tf;
-    if(remainder > 0){
-        const slice = allCandles.slice(-remainder);
-        const o = slice[0].open;
-        const c = slice[slice.length - 1].close;
-        const h = Math.max(...slice.map(c => c.high));
-        const l = Math.min(...slice.map(c => c.low));
-        const v = slice.reduce((sum, c) => sum + (c.volume || 0), 0);
-        const t = slice[slice.length - 1].time;
+    for (let i = 0; i < allCandles.length; i++) {
+        const c = allCandles[i];
 
-        aggregated.push({open: o, high: h, low: l, close: c, volume: v, time: t});
+        if (!current) {
+            current = {
+                open: c.open,
+                high: c.high,
+                low: c.low,
+                close: c.close,
+                time: c.time,
+                volume: c.volume
+            };
+            count = 1;
+        } else {
+            current.high = Math.max(current.high, c.high);
+            current.low = Math.min(current.low, c.low);
+            current.close = c.close;
+            current.volume += c.volume;
+            count++;
+        }
+
+        if (count === tf) {
+            aggregated.push(current);
+            current = null;
+            count = 0;
+        }
     }
 
-    candles = aggregated;
-    drawChart();
+    if (current) {
+        aggregated.push(current);
+    }
+
+    return aggregated;
 }
 
 // --- Live update interval (only once) ---
 setInterval(() => {
     if(currentTF > 1){
-        aggregateCandles(); // rebuild TF candles including the live one
+        candles = aggregateCandles();
+        drawChart();
     }
 }, 1000);
 
 // --- TF selector listener ---
 const tfSelect = document.getElementById('tfSelect');
 tfSelect.addEventListener('change', e => {
+
     currentTF = parseInt(e.target.value) || 1;
-    aggregateCandles();
+
+    candles = aggregateCandles();
+
+    // 🔥 AUTO CENTER ON LATEST CANDLE
+    scrollToLatestCandle();
+
 });
 // ----------------------------
 // Gear menus
@@ -493,36 +501,27 @@ function drawChart(){
     ctx.strokeStyle=theme.text; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(padding.left-5,padding.top); ctx.lineTo(padding.left-5,canvas.height-padding.bottom); ctx.stroke();
 
-	// Candles & Volume clipping
+	// --- Clipping (keep this part) ---
 	const chartTop = padding.top;
 	const chartBottom = canvas.height - padding.bottom - volumeHeight;
 	const chartLeft = padding.left;
 	const chartRight = canvas.width - padding.right;
 
-	ctx.save(); 
+	ctx.save();
 	ctx.beginPath();
-	ctx.rect(chartLeft, chartTop, chartRight - chartLeft, chartBottom - chartTop); // clip to chart area
+	ctx.rect(chartLeft, chartTop, chartRight - chartLeft, chartBottom - chartTop);
 	ctx.clip();
 
-	const firstVisible = Math.max(0, Math.floor(-offsetX / spacing));
-	const lastVisible = Math.min(candles.length, Math.ceil((chartWidth - offsetX) / spacing));
+	// --- NEW CLEAN SYSTEM ---
+	const scales = {
+    scaleX: i => padding.left + i * spacing + offsetX,
+    scaleY: scaleY
+};
+	const range = getVisibleRange(chartWidth, spacing);
 
-	for (let i = firstVisible; i < lastVisible; i++) {
-		const c = candles[i], x = padding.left + i * spacing + offsetX;
-		const yOpen = scaleY(c.open), yClose = scaleY(c.close), yHigh = scaleY(c.high), yLow = scaleY(c.low);
-		const color = c.close >= c.open ? theme.candleUp : theme.candleDown;
+	drawCandles(ctx, scales, range, theme);
 
-		// Wick
-		ctx.strokeStyle = color; 
-		ctx.beginPath(); 
-		ctx.moveTo(x, yHigh); 
-		ctx.lineTo(x, yLow); 
-		ctx.stroke();
-
-		// Body
-		ctx.fillStyle = color; 
-		ctx.fillRect(x - candleWidth / 2, Math.min(yOpen, yClose), candleWidth, Math.max(Math.abs(yClose - yOpen), 1));
-	}
+	ctx.restore();
 	// Flashing stroke for the latest candle
 	if(candles.length > 0 && blinkVisible) {
 		const latestIndex = candles.length - 1;
@@ -534,31 +533,45 @@ function drawChart(){
 		ctx.lineWidth = 2;
 		ctx.strokeRect(x - candleWidth / 2 - 2, Math.min(yOpen, yClose) - 2, candleWidth + 4, Math.max(Math.abs(yClose - yOpen), 1) + 4);
 	}
-	ctx.restore(); // remove clipping
     ctx.strokeStyle=theme.grid; ctx.lineWidth=0.5; ctx.beginPath(); ctx.moveTo(padding.left,canvas.height-padding.bottom-volumeHeight); ctx.lineTo(canvas.width-padding.right,canvas.height-padding.bottom-volumeHeight); ctx.stroke();
 
 	// Time labels (allow labels even for offscreen candles)
 	ctx.fillStyle = theme.text;
 	ctx.textAlign = 'center';
 	ctx.font = '10px Arial';
+
 	let lastX = -Infinity;
+	let lastDay = null;
 	const minLabelSpacing = 50;
 
 	for (let i = 0; i < candles.length; i++) {
+
 		const c = candles[i];
+
+		if (!c.time) continue; // ✅ FIX
+
 		const x = padding.left + i * spacing + offsetX;
 
-		// Only draw if inside chart area plus a little buffer
 		if (x < padding.left - 20 || x > canvas.width - padding.right + 20) continue;
-		if (x - lastX < minLabelSpacing) continue; // spacing between labels
-		lastX = x;
+		if (x - lastX < minLabelSpacing) continue;
 
 		const d = new Date(c.time * 1000);
-		ctx.fillText(
-			`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`,
-			x,
-			canvas.height - padding.bottom + 15
-		);
+		if (isNaN(d)) continue; // ✅ FIX
+
+		const dayKey = d.toDateString();
+
+		let label;
+
+		if (dayKey !== lastDay) {
+			label = `${d.getDate()}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
+			lastDay = dayKey;
+		} else {
+			label = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+		}
+
+		lastX = x;
+
+		ctx.fillText(label, x, canvas.height - padding.bottom + 15);
 	}
 
 	// Indicators
@@ -1112,39 +1125,6 @@ price: midpoint
 
 }
 
-function calculateALP(){
-
-const settings = {
-enabled: document.getElementById("alpToggle").checked,
-lookback: parseInt(document.getElementById("alpLookback").value)
-};
-
-if(!settings.enabled) return null;
-if(candles.length < settings.lookback) return null;
-
-const recent = candles.slice(-settings.lookback);
-
-const high = Math.max(...recent.map(c=>c.high));
-const low = Math.min(...recent.map(c=>c.low));
-
-const midpoint = (high + low) / 2;
-
-const last = candles[candles.length-1].close;
-
-let direction;
-
-if(last > midpoint){
-    direction = "DOWN";
-}else{
-    direction = "UP";
-}
-
-return {
-direction,
-price: midpoint
-};
-
-}
 
 function drawALPZone(){
 
@@ -1191,4 +1171,54 @@ zoneHeight
 
 ctx.restore();
 
+}
+
+
+
+function drawCandles(ctx, scales, range, theme) {
+    const { scaleX, scaleY } = scales;
+
+    for (let i = range.start; i < range.end; i++) {
+        const c = candles[i];
+
+        const x = scaleX(i);
+        const yOpen = scaleY(c.open);
+        const yClose = scaleY(c.close);
+        const yHigh = scaleY(c.high);
+        const yLow = scaleY(c.low);
+
+        const color = c.close >= c.open ? theme.candleUp : theme.candleDown;
+
+        drawSingleCandle(ctx, x, yOpen, yClose, yHigh, yLow, color);
+    }
+}
+
+function drawSingleCandle(ctx, x, yOpen, yClose, yHigh, yLow, color) {
+    const bodyTop = Math.min(yOpen, yClose);
+    const bodyHeight = Math.max(Math.abs(yClose - yOpen), 1);
+
+    // Wick
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, yHigh);
+    ctx.lineTo(x, yLow);
+    ctx.stroke();
+
+    // Body
+    ctx.fillStyle = color;
+    ctx.fillRect(
+        x - candleWidth / 2,
+        bodyTop,
+        candleWidth,
+        bodyHeight
+    );
+}
+
+function getVisibleRange(chartWidth, spacing) {
+    const start = Math.max(0, Math.floor(-offsetX / spacing));
+	const end = Math.min(
+		candles.length,
+		Math.ceil((chartWidth - offsetX) / spacing) + 2
+	);
+    return { start, end };
 }

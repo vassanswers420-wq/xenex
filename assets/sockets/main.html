@@ -4,22 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tixterminal</title>
-
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 body {
-    background: #050505;
-    color: #fff;
-    font-family: Arial, sans-serif;
+    background: radial-gradient(circle at top, #0a0f1c, #02050a);
+    color: #e6edf3;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
     margin: 0;
     padding: 0;
 }
 header {
-    padding: 10px;
-    background: #111;
+    padding: 10px 16px;
+    background: rgba(20, 25, 40, 0.6);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
 }
 select{
   background:#1b1b1b;
@@ -31,16 +33,22 @@ select option{
   color:#ffffff;
 }
 select {
-    padding: 6px 12px;
-    font-size: 14px;
-    border-radius: 4px;
-    border: 1px solid #888;
-    background: #111;
-    color: #fff;
-    cursor: pointer;
+    background: rgba(255,255,255,0.05);
+    color: #e6edf3;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+
+    transition: all 0.2s ease;
 }
-select:hover { border-color: #fff; }
-canvas { display: block; margin: 0; background: #050505; cursor: grab; }
+
+select:hover {
+    border-color: #00c8ff;
+    background: rgba(255,255,255,0.08);
+}
+canvas { display: block; margin: 0;     background: radial-gradient(circle at center, #0a0f1c, #02050a);
+ cursor: grab; }
 canvas.hovered { cursor: crosshair; }
 
 /* Settings gear */
@@ -55,37 +63,30 @@ canvas.hovered { cursor: crosshair; }
 
 
 #gear {
-
-    font-size:18px;
-
-    width:36px;
-    height:36px;
+    font-size: 16px;
+    width: 34px;
+    height: 34px;
 
     display:flex;
     align-items:center;
     justify-content:center;
 
-    border-radius:50%;
+    border-radius: 50%;
 
-    background:linear-gradient(145deg,#00c6ff,#0072ff);
-    color:white;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+
+    color: #00c8ff;
 
     cursor:pointer;
-    user-select:none;
 
-    box-shadow:
-        0 0 8px rgba(0,150,255,0.6),
-        inset 0 0 6px rgba(255,255,255,0.3);
-
-    transition:all 0.25s ease;
+    transition: all 0.25s ease;
 }
-#gear:hover{
 
-    transform:rotate(90deg) scale(1.08);
-
-    box-shadow:
-        0 0 14px rgba(0,200,255,0.9),
-        inset 0 0 10px rgba(255,255,255,0.4);
+#gear:hover {
+    transform: rotate(90deg) scale(1.1);
+    background: rgba(0,200,255,0.15);
+    box-shadow: 0 0 12px rgba(0,200,255,0.4);
 }
 
 #settingsMenu {
@@ -101,15 +102,19 @@ canvas.hovered { cursor: crosshair; }
     background: #111;
     border: 1px solid #444;
     border-radius: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
 
     padding: 16px;
+    padding-bottom: 6px;
 
     flex-direction: column;
     gap: 14px;
 
-    font-size: 14px;
-
+    font-size: 11px;
+ color: #00c8ff;
     box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    letter-spacing: 1px;
+    text-transform: uppercase;
 
     z-index: 100;
 }
@@ -300,7 +305,9 @@ padding:2px 4px;
 }
 
 #tutorialContent {
-    background: #111;
+     background: linear-gradient(145deg, #0f172a, #020617);
+    border: 1px solid rgba(255,255,255,0.08);
+
     color: #fff;
     padding: 30px 40px;
     border-radius: 12px;
@@ -308,13 +315,13 @@ padding:2px 4px;
     max-width: 500px;       /* desktop won't be too wide */
     min-width: 300px;       /* ensures readability on small screens */
     text-align: center;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.8);
     font-size: 16px;
 }
 
 #tutorialContent h2 {
     margin-bottom: 15px;
-    color: #00ffcc;
+    color: #00c8ff;
     font-size: 24px;
 }
 

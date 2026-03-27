@@ -6,13 +6,13 @@ const themes = {
         candleUp: "#00ff66",
         candleDown: "#ff4444"
     },
-	midnight: {
-		bg: "#ffffff",          // pure white background
-		grid: "#afadad",        // light grid lines
-		text: "#333333",        // dark readable text
-		candleUp: "#16a34a",    // clean green (not neon)
-		candleDown: "#dc2626"   // clean red
-	},
+    midnight: {
+        bg: "#0b0f1a",
+        grid: "#1c2333",
+        text: "#8899aa",
+        candleUp: "#00ffaa",
+        candleDown: "#ff5577"
+    },
     graphite: {
         bg: "#1a1a1a",
         grid: "#333",
@@ -45,8 +45,7 @@ const idleDelay = 2000; // 5 seconds
 let allCandles = []; // raw 1-min candles
 let currentTF = 1;   // default timeframe
 let alpBlink = 0;
-let cachedZones = [];
-let lastZoneUpdate = 0;
+
 const smaToggle = document.getElementById('smaToggle');
 const smaPeriod = document.getElementById('smaPeriod');
 const emaToggle = document.getElementById('emaToggle');
@@ -84,7 +83,7 @@ async function loadCandles(symbol){
 			time: +c.time
 		}));
 		currentTF = parseInt(document.getElementById('tfSelect').value) || 1;
-		candles = aggregateCandles();     // build candles array for selected TF
+		aggregateCandles();           // build candles array for selected TF
 
         // Auto-scroll to newest candle in the MIDDLE of canvas
         const spacing = candleWidth * 1.5;
@@ -98,7 +97,7 @@ async function loadCandles(symbol){
 function resizeCanvas(){
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight - document.querySelector("header").offsetHeight;
-    requestDraw();
+    drawChart();
 }
 
 window.addEventListener("resize", resizeCanvas);
@@ -107,68 +106,60 @@ window.addEventListener("load", resizeCanvas);
 
 // --- Aggregate candles function ---
 function aggregateCandles() {
-    const tf = currentTF;
+    if (!allCandles || allCandles.length === 0) return;
+    
+    const tf = currentTF; // in minutes
+    if(tf === 1){
+        candles = [...allCandles]; // just copy raw data
+        drawChart();
+        return;
+    }
+    
+    let aggregated = [];
+    for (let i = 0; i < allCandles.length; i += tf) {
+        const slice = allCandles.slice(i, i + tf);
+        if(slice.length === 0) continue;
 
-    if (tf === 1) return allCandles;
+        const o = slice[0].open;
+        const c = slice[slice.length - 1].close;
+        const h = Math.max(...slice.map(c => c.high));
+        const l = Math.min(...slice.map(c => c.low));
+        const v = slice.reduce((sum, c) => sum + (c.volume || 0), 0);
+        const t = slice[slice.length - 1].time;
 
-    const aggregated = [];
-    let current = null;
-    let count = 0;
-
-    for (let i = 0; i < allCandles.length; i++) {
-        const c = allCandles[i];
-
-        if (!current) {
-            current = {
-                open: c.open,
-                high: c.high,
-                low: c.low,
-                close: c.close,
-                time: c.time,
-                volume: c.volume
-            };
-            count = 1;
-        } else {
-            current.high = Math.max(current.high, c.high);
-            current.low = Math.min(current.low, c.low);
-            current.close = c.close;
-            current.volume += c.volume;
-            count++;
-        }
-
-        if (count === tf) {
-            aggregated.push(current);
-            current = null;
-            count = 0;
-        }
+        aggregated.push({open: o, high: h, low: l, close: c, volume: v, time: t});
     }
 
-    if (current) {
-        aggregated.push(current);
+    // --- Add in-progress candle if slice is incomplete ---
+    const remainder = allCandles.length % tf;
+    if(remainder > 0){
+        const slice = allCandles.slice(-remainder);
+        const o = slice[0].open;
+        const c = slice[slice.length - 1].close;
+        const h = Math.max(...slice.map(c => c.high));
+        const l = Math.min(...slice.map(c => c.low));
+        const v = slice.reduce((sum, c) => sum + (c.volume || 0), 0);
+        const t = slice[slice.length - 1].time;
+
+        aggregated.push({open: o, high: h, low: l, close: c, volume: v, time: t});
     }
 
-    return aggregated;
+    candles = aggregated;
+    drawChart();
 }
 
 // --- Live update interval (only once) ---
 setInterval(() => {
     if(currentTF > 1){
-        candles = aggregateCandles();
-        requestDraw();
+        aggregateCandles(); // rebuild TF candles including the live one
     }
 }, 1000);
 
 // --- TF selector listener ---
 const tfSelect = document.getElementById('tfSelect');
 tfSelect.addEventListener('change', e => {
-
     currentTF = parseInt(e.target.value) || 1;
-
-    candles = aggregateCandles();
-
-    // 🔥 AUTO CENTER ON LATEST CANDLE
-    scrollToLatestCandle();
-
+    aggregateCandles();
 });
 // ----------------------------
 // Gear menus
@@ -179,7 +170,7 @@ document.addEventListener('click', e=>{ if(!settingsMenu.contains(e.target) && !
 // ----------------------------
 // Theme change
 document.getElementById('themeSelect').addEventListener('change', e=>{
-    currentTheme=e.target.value; requestDraw();
+    currentTheme=e.target.value; drawChart();
 });
 
 // ----------------------------
@@ -194,7 +185,7 @@ canvas.addEventListener('mousedown', e => {
     dragStartY = e.clientY;
     canvas.style.cursor = 'grabbing';
 });canvas.addEventListener('mouseup', ()=>{ isDragging=false; canvas.style.cursor=hoveredCandleIndex!==null?'crosshair':'grab'; });
-canvas.addEventListener('mouseleave', ()=>{ isDragging=false; canvas.style.cursor='grab'; hoveredCandleIndex=null; tooltip.style.display='none'; requestDraw(); });
+canvas.addEventListener('mouseleave', ()=>{ isDragging=false; canvas.style.cursor='grab'; hoveredCandleIndex=null; tooltip.style.display='none'; drawChart(); });
 canvas.addEventListener('mousemove', e => {
 	const padding = {top:50, bottom:50, left:80, right:20};
 	const volumeHeight = 50;
@@ -216,10 +207,8 @@ canvas.addEventListener('mousemove', e => {
 
 		// calculate visible range
 		// calculate full price range
-		updatePriceCache();
-
-		let priceMin = cachedPrice.min;
-		let priceMax = cachedPrice.max;
+		const priceMin = Math.min(...candles.map(c => c.low));
+		const priceMax = Math.max(...candles.map(c => c.high));
 		const fullRange = priceMax - priceMin;
 
 		// visible range after zoom
@@ -231,7 +220,7 @@ canvas.addEventListener('mousemove', e => {
 		dragStartX = e.clientX;
 		dragStartY = e.clientY;
 
-		requestDraw();
+		drawChart();
 		return;
 	}
     // --- Hover candle ---
@@ -254,7 +243,7 @@ canvas.addEventListener('mousemove', e => {
         tooltip.style.top=(e.clientY+15)+'px';
         tooltip.style.display='block';
     } else { hoveredCandleIndex=null; tooltip.style.display='none'; }
-    requestDraw();
+    drawChart();
 });
 canvas.addEventListener('wheel', e => {
 
@@ -275,7 +264,7 @@ canvas.addEventListener('wheel', e => {
 			priceZoom = Math.max(priceZoom / priceZoomFactor, 0.5);
 		}
 
-        requestDraw();
+        drawChart();
         return;
     }
 
@@ -293,7 +282,7 @@ canvas.addEventListener('wheel', e => {
 
     offsetX = mouseX - ((mouseX - offsetX) * newSpacing / oldSpacing);
 
-    requestDraw();
+    drawChart();
 
 });
 /* =========================
@@ -322,7 +311,7 @@ canvas.addEventListener("touchmove", e=>{
         dragStartX = touch.clientX;
         dragStartY = touch.clientY;
 
-        requestDraw();
+        drawChart();
     }
 
 	if(e.touches.length === 2){
@@ -374,7 +363,7 @@ canvas.addEventListener("touchmove", e=>{
 				offsetX = centerX - ((centerX - offsetX) * newSpacing / oldSpacing);
 			}
 
-			requestDraw();
+			drawChart();
 		}
 
 		lastPinchDistance = distance;
@@ -393,10 +382,7 @@ canvas.addEventListener("touchend", ()=>{
 });
 
 // Indicator event listeners
-[smaToggle,smaPeriod,emaToggle,emaPeriod,vwapToggle].forEach(el=>el.addEventListener('input', () => {
-    indicatorCache.lastLength = 0;
-    requestDraw();
-}));
+[smaToggle,smaPeriod,emaToggle,emaPeriod,vwapToggle].forEach(el=>el.addEventListener('input', drawChart));
 setInterval(()=>{ if(symbolSelect.value) loadCandles(symbolSelect.value); }, 60000);
 
 // ----------------------------
@@ -411,10 +397,7 @@ function drawIndicator(values,color){
     const chartHeight=canvas.height-padding.top-padding.bottom-volumeHeight;
 	const maxOffsetY = chartHeight;
 	offsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, offsetY));
-    updatePriceCache();
-
-	const priceMin = cachedPrice.min;
-	const priceMax = cachedPrice.max;
+    const priceMax=Math.max(...candles.map(c=>c.high)), priceMin=Math.min(...candles.map(c=>c.low));
 	const visibleRange = (priceMax - priceMin) / priceZoom;
 
 	const scaleY = price =>
@@ -430,125 +413,7 @@ function drawIndicator(values,color){
     });
     ctx.stroke();
 }
-// ==========================
-// 🔥 SMART LIQUIDITY ZONES
-// ==========================
 
-function detectLiquidityPools(data, tolerance = 0.0015) {
-
-    const pools = [];
-    const minTouches = 3;
-    const lookback = 200;
-
-    const startIndex = Math.max(0, data.length - lookback);
-
-    for (let i = startIndex; i < data.length - 10; i++) { // 🔥 ignore last 10 candles
-
-        let touchesHigh = 0;
-        let touchesLow = 0;
-
-        for (let j = startIndex; j < data.length - 10; j++) {
-
-            if (i === j) continue;
-
-            if (Math.abs(data[i].high - data[j].high) < data[i].high * tolerance) {
-                touchesHigh++;
-            }
-
-            if (Math.abs(data[i].low - data[j].low) < data[i].low * tolerance) {
-                touchesLow++;
-            }
-        }
-
-        // 🔥 only strong zones
-        if (touchesHigh >= minTouches) {
-            pools.push({
-                price: data[i].high,
-                strength: touchesHigh,
-                type: "high"
-            });
-        }
-
-        if (touchesLow >= minTouches) {
-            pools.push({
-                price: data[i].low,
-                strength: touchesLow,
-                type: "low"
-            });
-        }
-    }
-
-    return pools;
-}
-
-function detectRejections(data) {
-    return data.map(c => {
-
-        const body = Math.abs(c.close - c.open);
-        const upperWick = c.high - Math.max(c.open, c.close);
-        const lowerWick = Math.min(c.open, c.close) - c.low;
-
-        return {
-            high: c.high,
-            low: c.low,
-            rejectHigh: upperWick > body * 2,
-            rejectLow: lowerWick > body * 2
-        };
-    });
-}
-
-function buildZones(levels, tolerance = 0.003) {
-
-    let zones = [];
-
-    levels.forEach(level => {
-
-        let found = false;
-
-        for (let z of zones) {
-
-            const mid = (z.min + z.max) / 2;
-
-            if (Math.abs(level.price - mid) < mid * tolerance) {
-                z.min = Math.min(z.min, level.price);
-                z.max = Math.max(z.max, level.price);
-                z.strength++;
-                found = true;
-                break;
-            }
-        }
-
-        if (!found) {
-            zones.push({
-                min: level.price,
-                max: level.price,
-                strength: 1
-            });
-        }
-
-    });
-
-    return zones.sort((a,b)=>b.strength - a.strength);
-}
-
-function calculateSmartZones(data){
-
-    const liquidity = detectLiquidityPools(data);
-    const rejections = detectRejections(data);
-
-    let levels = [];
-
-    liquidity.forEach(l => {
-        levels.push({ price: l.price });
-    });
-
-    rejections.forEach(r => {
-        if(r.rejectHigh) levels.push({ price: r.high });
-        if(r.rejectLow) levels.push({ price: r.low });
-    });
-
-    return buildZones(levels).slice(0,3); // max 3 zones only
-}
 // ----------------------------
 // autoscroll
 function smoothScrollTo(targetOffset, duration = 500) {
@@ -561,41 +426,11 @@ function smoothScrollTo(targetOffset, duration = 500) {
         // easeOutQuad easing for smooth effect
         const easedT = 1 - (1 - t) * (1 - t);
         offsetX = startOffset + (targetOffset - startOffset) * easedT;
-        requestDraw();
+        drawChart();
         if (t < 1) requestAnimationFrame(animate);
     }
 
     requestAnimationFrame(animate);
-}
-let cachedPrice = { min: 0, max: 0, lastLength: 0 };
-let cachedVol = { max: 0, lastLength: 0 };
-
-function updateVolumeCache(){
-    if(cachedVol.lastLength === candles.length) return;
-
-    let max = 0;
-
-    for(const c of candles){
-        if(c.volume > max) max = c.volume;
-    }
-
-    cachedVol.max = max;
-    cachedVol.lastLength = candles.length;
-}
-function updatePriceCache(){
-    if(cachedPrice.lastLength === candles.length) return;
-
-    let min = Infinity;
-    let max = -Infinity;
-
-    for(const c of candles){
-        if(c.low < min) min = c.low;
-        if(c.high > max) max = c.high;
-    }
-
-    cachedPrice.min = min;
-    cachedPrice.max = max;
-    cachedPrice.lastLength = candles.length;
 }
 // ----------------------------
 // FULL drawChart
@@ -611,24 +446,21 @@ function drawChart(){
 	ctx.fillRect(0,0,canvas.width,canvas.height);
 
     // Price & volume ranges
-	updatePriceCache();
-
-	let priceMin = cachedPrice.min;
-	let priceMax = cachedPrice.max;
+    let priceMin = Math.min(...candles.map(c=>c.low));
+	let priceMax = Math.max(...candles.map(c=>c.high));
 
 	if(priceMax - priceMin < 0.0001){
 		priceMax += 1;
 		priceMin -= 1;
 	}
-	updateVolumeCache();
-	const volMax = cachedVol.max;
+    const volMax=Math.max(...candles.map(c=>c.volume||0));
 	const visibleRange = (priceMax - priceMin) / priceZoom;
 
 	const scaleY = price =>
 		padding.top +
 		(priceMax - price) * chartHeight / visibleRange +
 		offsetY;
-    const scaleVol = vol => volMax ? (vol || 0) * volumeHeight / volMax : 0;
+    const scaleVol=vol=> (vol||0)*volumeHeight/volMax;
 
 	// Grid & price labels (dynamic with zoom & pan)
 
@@ -661,27 +493,36 @@ function drawChart(){
     ctx.strokeStyle=theme.text; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(padding.left-5,padding.top); ctx.lineTo(padding.left-5,canvas.height-padding.bottom); ctx.stroke();
 
-	// --- Clipping (keep this part) ---
+	// Candles & Volume clipping
 	const chartTop = padding.top;
 	const chartBottom = canvas.height - padding.bottom - volumeHeight;
 	const chartLeft = padding.left;
 	const chartRight = canvas.width - padding.right;
 
-	ctx.save();
+	ctx.save(); 
 	ctx.beginPath();
-	ctx.rect(chartLeft, chartTop, chartRight - chartLeft, chartBottom - chartTop);
+	ctx.rect(chartLeft, chartTop, chartRight - chartLeft, chartBottom - chartTop); // clip to chart area
 	ctx.clip();
 
-	// --- NEW CLEAN SYSTEM ---
-	const scales = {
-    scaleX: i => padding.left + i * spacing + offsetX,
-    scaleY: scaleY
-};
-	const range = getVisibleRange(chartWidth, spacing);
+	const firstVisible = Math.max(0, Math.floor(-offsetX / spacing));
+	const lastVisible = Math.min(candles.length, Math.ceil((chartWidth - offsetX) / spacing));
 
-	drawCandles(ctx, scales, range, theme);
+	for (let i = firstVisible; i < lastVisible; i++) {
+		const c = candles[i], x = padding.left + i * spacing + offsetX;
+		const yOpen = scaleY(c.open), yClose = scaleY(c.close), yHigh = scaleY(c.high), yLow = scaleY(c.low);
+		const color = c.close >= c.open ? theme.candleUp : theme.candleDown;
 
-	ctx.restore();
+		// Wick
+		ctx.strokeStyle = color; 
+		ctx.beginPath(); 
+		ctx.moveTo(x, yHigh); 
+		ctx.lineTo(x, yLow); 
+		ctx.stroke();
+
+		// Body
+		ctx.fillStyle = color; 
+		ctx.fillRect(x - candleWidth / 2, Math.min(yOpen, yClose), candleWidth, Math.max(Math.abs(yClose - yOpen), 1));
+	}
 	// Flashing stroke for the latest candle
 	if(candles.length > 0 && blinkVisible) {
 		const latestIndex = candles.length - 1;
@@ -693,55 +534,39 @@ function drawChart(){
 		ctx.lineWidth = 2;
 		ctx.strokeRect(x - candleWidth / 2 - 2, Math.min(yOpen, yClose) - 2, candleWidth + 4, Math.max(Math.abs(yClose - yOpen), 1) + 4);
 	}
+	ctx.restore(); // remove clipping
     ctx.strokeStyle=theme.grid; ctx.lineWidth=0.5; ctx.beginPath(); ctx.moveTo(padding.left,canvas.height-padding.bottom-volumeHeight); ctx.lineTo(canvas.width-padding.right,canvas.height-padding.bottom-volumeHeight); ctx.stroke();
 
 	// Time labels (allow labels even for offscreen candles)
 	ctx.fillStyle = theme.text;
 	ctx.textAlign = 'center';
 	ctx.font = '10px Arial';
-
 	let lastX = -Infinity;
-	let lastDay = null;
 	const minLabelSpacing = 50;
 
 	for (let i = 0; i < candles.length; i++) {
-
 		const c = candles[i];
-
-		if (!c.time) continue; // ✅ FIX
-
 		const x = padding.left + i * spacing + offsetX;
 
+		// Only draw if inside chart area plus a little buffer
 		if (x < padding.left - 20 || x > canvas.width - padding.right + 20) continue;
-		if (x - lastX < minLabelSpacing) continue;
-
-		const d = new Date(c.time * 1000);
-		if (isNaN(d)) continue; // ✅ FIX
-
-		const dayKey = d.toDateString();
-
-		let label;
-
-		if (dayKey !== lastDay) {
-			label = `${d.getDate()}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
-			lastDay = dayKey;
-		} else {
-			label = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-		}
-
+		if (x - lastX < minLabelSpacing) continue; // spacing between labels
 		lastX = x;
 
-		ctx.fillText(label, x, canvas.height - padding.bottom + 15);
+		const d = new Date(c.time * 1000);
+		ctx.fillText(
+			`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`,
+			x,
+			canvas.height - padding.bottom + 15
+		);
 	}
 
 	// Indicators
-updateIndicators();
+	if(smaToggle.checked) drawIndicator(calculateSMA(parseInt(smaPeriod.value)),'#FFD700');
+	if(emaToggle.checked) drawIndicator(calculateEMA(parseInt(emaPeriod.value)),'#1E90FF');
+	if(vwapToggle.checked) drawIndicator(calculateVWAP(),'#00FFFF');
 
-if(smaToggle.checked) drawIndicator(indicatorCache.sma,'#FFD700');
-if(emaToggle.checked) drawIndicator(indicatorCache.ema,'#1E90FF');
-if(vwapToggle.checked) drawIndicator(indicatorCache.vwap,'#00FFFF');
-
-	updateSmartZones();
+	updateSupportResistance();
 	drawSMTFlash();
 	drawALPZone();
     // Hover marker
@@ -751,17 +576,6 @@ if(vwapToggle.checked) drawIndicator(indicatorCache.vwap,'#00FFFF');
         const y=scaleY(c.high)-8;
         ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
     }
-	const sweep = detectLiquiditySweep(candles);
-
-	if(sweep){
-		ctx.fillStyle = sweep === "bullish" ? "#00ff99" : "#ff4444";
-		ctx.font = "14px Arial";
-		ctx.fillText(
-			sweep === "bullish" ? "LIQUIDITY GRAB ↑" : "LIQUIDITY GRAB ↓",
-			100,
-			40
-		);
-	}
 }
 
 
@@ -769,7 +583,7 @@ if(vwapToggle.checked) drawIndicator(indicatorCache.vwap,'#00FFFF');
 setInterval(()=>{ 
     blinkVisible = !blinkVisible;
     alpBlink += 0.15;   // animation for ALP zone
-    requestDraw(); 
+    drawChart(); 
 },500);
 
 // Initialize
@@ -802,13 +616,9 @@ function scrollToLatestCandle() {
 
     const last = candles[lastIndex];
 
-	let priceMin = Infinity;
-	let priceMax = -Infinity;
+    const priceMin = Math.min(...candles.map(c=>c.low));
+    const priceMax = Math.max(...candles.map(c=>c.high));
 
-	for (const c of candles) {
-		if (c.low < priceMin) priceMin = c.low;
-		if (c.high > priceMax) priceMax = c.high;
-	}
     const candleMiddlePrice = (last.high + last.low) / 2;
 
     const visibleRange = (priceMax - priceMin) / priceZoom;
@@ -843,7 +653,7 @@ function smoothScrollToXY(targetX, targetY, duration = 500) {
 
         offsetX = startX + (targetX - startX) * easedT;
         offsetY = startY + (targetY - startY) * easedT;
-        requestDraw();
+        drawChart();
 
         if(t < 1) requestAnimationFrame(animate);
     }
@@ -973,69 +783,58 @@ levels = levels.slice(0, settings.maxLevels);
 drawSR(levels);
 
 }
-function drawZones(zones){
+function drawSR(levels){
 
     const padding = {top:50, bottom:50, left:80, right:20};
     const volumeHeight = 50;
-
     const chartHeight = canvas.height - padding.top - padding.bottom - volumeHeight;
 
-	updatePriceCache();
+    const priceMin = Math.min(...candles.map(c=>c.low));
+    const priceMax = Math.max(...candles.map(c=>c.high));
 
-	const priceMin = cachedPrice.min;
-	const priceMax = cachedPrice.max;
+	const visibleRange = (priceMax - priceMin) / priceZoom;
 
-    const visibleRange = (priceMax - priceMin) / priceZoom;
-
-    const scaleY = price =>
-        padding.top +
-        (priceMax - price) * chartHeight / visibleRange +
-        offsetY;
-
-    const lastPrice = candles[candles.length - 1].close;
+	const scaleY = price =>
+		padding.top +
+		(priceMax - price) * chartHeight / visibleRange +
+		offsetY;
 
     ctx.save();
-    ctx.setLineDash([5,5]); // dotted
 
-    zones.forEach(zone => {
+	ctx.lineWidth = 1.5;
+	ctx.setLineDash([6,6]);
 
-        // 🔥 center of zone (ONLY ONE LINE)
-        const mid = (zone.min + zone.max) / 2;
+	levels.forEach(level => {
 
-        // skip if offscreen
-        if(mid < priceMin || mid > priceMax) return;
+		const y = scaleY(level.price);
 
-        const y = scaleY(mid);
+		const lastPrice = candles[candles.length - 1].close;
 
-        // 🔥 SUPPORT / RESISTANCE COLOR
-        const isResistance = mid > lastPrice;
+		// Detect support or resistance
+		const isResistance = level.price > lastPrice;
 
-        const color = isResistance
-            ? `rgba(255,80,80,${0.4 + zone.strength * 0.1})`   // 🔴 red
-            : `rgba(0,255,140,${0.4 + zone.strength * 0.1})`;  // 🟢 green
+		const lineColor = isResistance ? "#ff4444" : "#00ff66";
 
-        ctx.strokeStyle = color;
+		ctx.strokeStyle = lineColor;
 
-        // 🔥 thickness = strength
-        ctx.lineWidth = Math.min(1 + zone.strength * 0.5, 3);
+		ctx.beginPath();
+		ctx.moveTo(padding.left, y);
+		ctx.lineTo(canvas.width - padding.right, y);
+		ctx.stroke();
 
-        ctx.beginPath();
-        ctx.moveTo(padding.left, y);
-        ctx.lineTo(canvas.width - padding.right, y);
-        ctx.stroke();
+		ctx.fillStyle = lineColor;
+		ctx.font = "11px Arial";
+		ctx.textAlign = "left";
 
-        // 🔥 LABEL (small but powerful)
-        ctx.fillStyle = color;
-        ctx.font = "11px Arial";
-        ctx.textAlign = "left";
+		const label = level.price.toFixed(2) + " (" + level.touches + ")";
+		const textWidth = ctx.measureText(label).width;
 
-        ctx.fillText(
-            isResistance ? "R" : "S",
-            padding.left + 5,
-            y - 4
-        );
-
-    });
+		ctx.fillText(
+			label,
+			canvas.width - padding.right - textWidth - 5,
+			y - 6
+		);
+	});
 
     ctx.setLineDash([]);
     ctx.restore();
@@ -1086,13 +885,8 @@ const recent = candles.slice(-lookback);
 const first = recent[0].close;
 const last = recent[recent.length-1].close;
 
-let high = -Infinity;
-let low = Infinity;
-
-for(const c of recent){
-    if(c.high > high) high = c.high;
-    if(c.low < low) low = c.low;
-}
+const high = Math.max(...recent.map(c=>c.high));
+const low = Math.min(...recent.map(c=>c.low));
 
 let direction = null;
 let target = null;
@@ -1139,10 +933,8 @@ const spacing = candleWidth * 1.5;
 
 const chartHeight = canvas.height - padding.top - padding.bottom - volumeHeight;
 
-updatePriceCache();
-
-const priceMin = cachedPrice.min;
-const priceMax = cachedPrice.max;
+const priceMin = Math.min(...candles.map(c=>c.low));
+const priceMax = Math.max(...candles.map(c=>c.high));
 
 const visibleRange = (priceMax - priceMin) / priceZoom;
 
@@ -1258,7 +1050,7 @@ window.addEventListener("message", (event) => {
                 document.getElementById("srTouches").value = data.srSettings.minTouches || 2;
                 document.getElementById("srTolerance").value = data.srSettings.tolerance || 0.002;
             }
-            requestDraw();
+            drawChart();
             break;
 
         case "updateIndicators":
@@ -1270,7 +1062,7 @@ window.addEventListener("message", (event) => {
                 emaPeriod.value = data.indicators.emaPeriod || emaPeriod.value;
                 vwapToggle.checked = !!data.indicators.vwap;
             }
-            requestDraw();
+            drawChart();
             break;
 
         case "setTimeframe":
@@ -1288,66 +1080,71 @@ window.addEventListener("message", (event) => {
 });
 function calculateALP(){
 
-    const settings = {
-        enabled: document.getElementById("alpToggle").checked,
-        lookback: parseInt(document.getElementById("alpLookback").value)
-    };
+const settings = {
+enabled: document.getElementById("alpToggle").checked,
+lookback: parseInt(document.getElementById("alpLookback").value)
+};
 
-    if(!settings.enabled) return null;
-    if(candles.length < settings.lookback) return null;
+if(!settings.enabled) return null;
+if(candles.length < settings.lookback) return null;
 
-    const recent = candles.slice(-settings.lookback);
+const recent = candles.slice(-settings.lookback);
 
-    const liquidity = detectLiquidityPools(recent);
+const high = Math.max(...recent.map(c=>c.high));
+const low = Math.min(...recent.map(c=>c.low));
 
-    if(!liquidity.length) return null;
+const midpoint = (high + low) / 2;
 
-    const lastPrice = candles[candles.length - 1].close;
+const last = candles[candles.length-1].close;
 
-    // 🔥 split above / below price
-    const above = liquidity.filter(l => l.price > lastPrice);
-    const below = liquidity.filter(l => l.price < lastPrice);
+let direction;
 
-    // 🔥 pick strongest zones
-    const bestAbove = above.sort((a,b)=>b.strength - a.strength)[0];
-    const bestBelow = below.sort((a,b)=>b.strength - a.strength)[0];
-
-    let target = null;
-    let direction = null;
-
-    if(bestAbove && bestBelow){
-        // 🔥 choose closer strong liquidity
-        const distAbove = Math.abs(bestAbove.price - lastPrice);
-        const distBelow = Math.abs(bestBelow.price - lastPrice);
-
-        if(distAbove < distBelow){
-            target = bestAbove.price;
-            direction = "UP";
-        }else{
-            target = bestBelow.price;
-            direction = "DOWN";
-        }
-    }
-    else if(bestAbove){
-        target = bestAbove.price;
-        direction = "UP";
-    }
-    else if(bestBelow){
-        target = bestBelow.price;
-        direction = "DOWN";
-    }
-
-    if(!target) return null;
-
-    return {
-        direction,
-        price: target
-    };
-	if(Math.abs(target - lastPrice) < lastPrice * 0.003){
-		return null;
-	}
+if(last > midpoint){
+    direction = "DOWN";
+}else{
+    direction = "UP";
 }
 
+return {
+direction,
+price: midpoint
+};
+
+}
+
+function calculateALP(){
+
+const settings = {
+enabled: document.getElementById("alpToggle").checked,
+lookback: parseInt(document.getElementById("alpLookback").value)
+};
+
+if(!settings.enabled) return null;
+if(candles.length < settings.lookback) return null;
+
+const recent = candles.slice(-settings.lookback);
+
+const high = Math.max(...recent.map(c=>c.high));
+const low = Math.min(...recent.map(c=>c.low));
+
+const midpoint = (high + low) / 2;
+
+const last = candles[candles.length-1].close;
+
+let direction;
+
+if(last > midpoint){
+    direction = "DOWN";
+}else{
+    direction = "UP";
+}
+
+return {
+direction,
+price: midpoint
+};
+
+}
 
 function drawALPZone(){
 
@@ -1360,10 +1157,8 @@ const volumeHeight = 50;
 
 const chartHeight = canvas.height - padding.top - padding.bottom - volumeHeight;
 
-updatePriceCache();
-
-const priceMin = cachedPrice.min;
-const priceMax = cachedPrice.max;
+const priceMin = Math.min(...candles.map(c=>c.low));
+const priceMax = Math.max(...candles.map(c=>c.high));
 
 const visibleRange = (priceMax - priceMin) / priceZoom;
 
@@ -1396,124 +1191,4 @@ zoneHeight
 
 ctx.restore();
 
-}
-
-let redrawPending = false;
-
-function requestDraw(){
-    if(redrawPending) return;
-
-    redrawPending = true;
-
-    requestAnimationFrame(() => {
-        drawChart();
-        redrawPending = false;
-    });
-}
-
-function drawCandles(ctx, scales, range, theme) {
-    const { scaleX, scaleY } = scales;
-
-    for (let i = range.start; i < range.end; i++) {
-        const c = candles[i];
-
-        const x = scaleX(i);
-        const yOpen = scaleY(c.open);
-        const yClose = scaleY(c.close);
-        const yHigh = scaleY(c.high);
-        const yLow = scaleY(c.low);
-
-        const color = c.close >= c.open ? theme.candleUp : theme.candleDown;
-
-        drawSingleCandle(ctx, x, yOpen, yClose, yHigh, yLow, color);
-    }
-}
-
-function drawSingleCandle(ctx, x, yOpen, yClose, yHigh, yLow, color) {
-    const bodyTop = Math.min(yOpen, yClose);
-    const bodyHeight = Math.max(Math.abs(yClose - yOpen), 1);
-
-    // Wick
-    ctx.strokeStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(x, yHigh);
-    ctx.lineTo(x, yLow);
-    ctx.stroke();
-
-    // Body
-    ctx.fillStyle = color;
-    ctx.fillRect(
-        x - candleWidth / 2,
-        bodyTop,
-        candleWidth,
-        bodyHeight
-    );
-}
-
-function getVisibleRange(chartWidth, spacing) {
-    const start = Math.max(0, Math.floor(-offsetX / spacing));
-	const end = Math.min(
-		candles.length,
-		Math.ceil((chartWidth - offsetX) / spacing) + 2
-	);
-    return { start, end };
-}
-function updateSmartZones(){
-
-    const settings = getSRSettings();
-    if(!settings.enabled) return;
-
-    const now = Date.now();
-
-    // 🔥 Recalculate only every 2 seconds
-    if(now - lastZoneUpdate > 2000){
-        cachedZones = calculateSmartZones(candles);
-        lastZoneUpdate = now;
-    }
-
-    drawZones(cachedZones);
-}
-function detectLiquiditySweep(data){
-
-    if(data.length < 20) return null;
-
-    const last = data[data.length - 1];
-
-    let prevHigh = -Infinity;
-    let prevLow = Infinity;
-
-    const start = data.length - 20;
-
-    for(let i = start; i < data.length - 1; i++){
-        const c = data[i];
-
-        if(c.high > prevHigh) prevHigh = c.high;
-        if(c.low < prevLow) prevLow = c.low;
-    }
-
-    if(last.high > prevHigh && last.close < prevHigh){
-        return "bearish";
-    }
-
-    if(last.low < prevLow && last.close > prevLow){
-        return "bullish";
-    }
-
-    return null;
-}
-let indicatorCache = {
-    sma: null,
-    ema: null,
-    vwap: null,
-    lastLength: 0
-};
-
-function updateIndicators(){
-    if(indicatorCache.lastLength === candles.length) return;
-
-    indicatorCache.sma = calculateSMA(parseInt(smaPeriod.value));
-    indicatorCache.ema = calculateEMA(parseInt(emaPeriod.value));
-    indicatorCache.vwap = calculateVWAP();
-
-    indicatorCache.lastLength = candles.length;
 }

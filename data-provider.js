@@ -1,19 +1,16 @@
 /* ═══════════════════════════════════════════════════════════
-   TixWatcher — Data Provider v2.3
+   TixWatcher — Data Provider v2.4
    ═══════════════════════════════════════════════════════════
-   Key changes vs v2.2:
-   • Removed global background-update timer. Each ChartPanel
-     drives its own syncTimer. Shared timer was invalidating
-     cache mid-tick and causing getLastPrice divergence.
-   • getData() returns a DEEP COPY. Each chart owns its array;
-     no shared-object mutations bleed between charts that load
-     the same symbol.
-   • getLastPrice() reads from the SAME cache as getData —
-     one pipeline, zero price divergence between calls.
+   Changes vs v2.3:
+   • bootRefresh(symbols[]) — parallel-fetches all symbols
+     at startup, warming the cache before any chart renders.
+     Returns a Promise that resolves when all fetches settle.
+   • getData() + getLastPrice() unchanged contract.
+   • CACHE_TTL bumped to 15s to ride out the boot burst.
    ═══════════════════════════════════════════════════════════ */
 
 const DataProvider = (() => {
-  const CACHE_TTL = 12000;   // 12 s — longer than 5 s sync so cache stays warm
+  const CACHE_TTL = 15000;
 
   const SYMBOLS = [
     "RELIANCE","TCS","INFY","HDFCBANK","ICICIBANK","SBIN",
@@ -43,9 +40,7 @@ const DataProvider = (() => {
     "GRASIM":1980,"SHREECEM":25800,"APOLLOHOSP":5680
   };
 
-  /* ── Seeded PRNG (mulberry32) ─────────────────────────────
-     Same symbol + same calendar-day → identical sequence.
-     Historical candles are stable across re-fetches.          */
+  /* ── Seeded PRNG (mulberry32) ─────────────────────────────  */
   function seededRand(seed) {
     let s = seed >>> 0;
     return () => {
@@ -120,7 +115,7 @@ const DataProvider = (() => {
       .filter(d => d.close > 0);
   }
 
-  /* ── Cache — stores CANONICAL arrays (never mutated) ──────  */
+  /* ── Cache ────────────────────────────────────────────────  */
   const cache   = new Map();
   const pending = new Map();
 
@@ -130,14 +125,17 @@ const DataProvider = (() => {
   }
   function setCache(sym, data) { cache.set(sym, { timestamp: Date.now(), data }); }
 
-  /* Deep-clone a single bar so each chart owns its objects */
+  /** Invalidate a specific symbol so next getData() forces a fresh fetch */
+  function invalidate(sym) { cache.delete(sym.toUpperCase()); }
+
+  /** Invalidate all cached symbols */
+  function invalidateAll() { cache.clear(); }
+
   function cloneBar(d) {
     return { time: d.time, open: d.open, high: d.high, low: d.low, close: d.close, volume: d.volume };
   }
 
-  /* ── getData — returns a FRESH COPY every time ────────────
-     Cached canonical array is never handed out directly.
-     Each chart mutates only its own copy.                     */
+  /* ── getData ──────────────────────────────────────────────  */
   async function getData(symbol) {
     if (!symbol) throw new Error('Symbol required');
     symbol = symbol.toUpperCase();
@@ -166,17 +164,13 @@ const DataProvider = (() => {
     return (await p).map(cloneBar);
   }
 
-  /* ── getLastPrice — reads from SAME cache as getData ──────
-     Never opens a second fetch pipeline; price is always
-     consistent with what getData most recently returned.      */
+  /* ── getLastPrice ─────────────────────────────────────────  */
   async function getLastPrice(symbol) {
     symbol = symbol.toUpperCase();
 
-    // Hot path: cache is warm → zero network call
     const cached = getCached(symbol);
     if (cached && cached.length) return cached[cached.length - 1].close;
 
-    // Cold path: fetch fresh, prime cache for subsequent getData calls too
     try {
       const live = await fetchFromYahoo(symbol);
       if (live.length) { setCache(symbol, live); return live[live.length - 1].close; }
@@ -187,9 +181,22 @@ const DataProvider = (() => {
     return mock.length ? mock[mock.length - 1].close : null;
   }
 
-  /* ── subscribe/unsubscribe — lifecycle bookkeeping ────────
-     No background timer here. Each ChartPanel owns its own
-     syncTimer and controls its own fetch cadence.            */
+  /* ── bootRefresh ──────────────────────────────────────────
+     Called once at startup. Parallel-fetches all requested
+     symbols, warming the cache. Resolves when all settle
+     (never rejects — individual failures silently fall back
+     to generated data).                                       */
+  async function bootRefresh(symbolList) {
+    invalidateAll();
+    const targets = (symbolList || SYMBOLS).map(s =>
+      typeof s === 'string' ? s.toUpperCase() : s.symbol?.toUpperCase()
+    ).filter(Boolean);
+
+    // Fire all fetches concurrently; ignore individual errors
+    await Promise.allSettled(targets.map(sym => getData(sym)));
+  }
+
+  /* ── subscribe/unsubscribe ────────────────────────────────  */
   const subscribedSymbols = new Set();
   function subscribe(sym)   { subscribedSymbols.add(sym.toUpperCase()); }
   function unsubscribe(sym) { subscribedSymbols.delete(sym.toUpperCase()); }
@@ -198,7 +205,12 @@ const DataProvider = (() => {
     return SYMBOLS.map(s => ({ symbol: s, name: s }));
   }
 
-  return { getSymbols, getData, getLastPrice, subscribe, unsubscribe, SYMBOLS };
+  return {
+    getSymbols, getData, getLastPrice,
+    subscribe, unsubscribe,
+    bootRefresh, invalidate, invalidateAll,
+    SYMBOLS
+  };
 })();
 
 window.DataProvider = DataProvider;

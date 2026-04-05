@@ -125,7 +125,11 @@ class ChartWindow {
     this.maximized  = false;
     this._preMaxState = null;
     this.mX = -1; this.mY = -1;
-    this._alerts    = []; // price alerts
+    this._alerts    = [];
+
+    /* ── Price axis zoom/pan state ── */
+    this.priceScale  = 1.0;   // >1 = zoom in (candles taller), <1 = zoom out (shorter)
+    this.priceOffset = 0;     // price units to shift the visible range up/down
 
     this._buildDOM(position);
     this._setupEvents();
@@ -325,118 +329,172 @@ class ChartWindow {
 
   _setupCanvasEvents() {
     const canvas = this.canvas, body = this.el.querySelector('.chart-body');
+    const AP = 58; // must match ChartRenderer
+
     let drawing = false, panDragging = false, dragX = 0, vsD = 0, veD = 0;
 
-	canvas.addEventListener('mousedown', e => {
-	  // ✅ RIGHT CLICK = cancel (do this FIRST)
-	  if (e.button === 2) {
-		this.tempTool = null;
-		drawing = false;
-		this.draw();
-		return;
-	  }
+    /* ── Price axis drag state ── */
+    let priceAxisDragging = false, priceAxisStartY = 0, priceAxisStartOffset = 0;
 
-	  // ✅ ONLY allow LEFT click
-	  if (e.button !== 0) return;
+    /* ── Helper: is cursor over price axis? ── */
+    const onPriceAxis = x => x >= 0 && x < AP;
 
-	  if (!this.currentTool) return;
+    canvas.addEventListener('mousedown', e => {
+      if (e.button === 2) {
+        this.tempTool = null; drawing = false; this.draw(); return;
+      }
+      if (e.button !== 0) return;
 
-	  const r = canvas.getBoundingClientRect();
-	  const x = e.clientX - r.left;
-	  const y = e.clientY - r.top;
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left;
+      const y = e.clientY - r.top;
 
-	  drawing = true;
+      /* Price axis drag — start panning Y */
+      if (onPriceAxis(x)) {
+        priceAxisDragging = true;
+        priceAxisStartY = y;
+        priceAxisStartOffset = this.priceOffset;
+        canvas.style.cursor = 'ns-resize';
+        e.preventDefault();
+        return;
+      }
 
-	  const idx = this.xToIdx(x);
-	  const price = this.yToPrice(y);
+      if (!this.currentTool) return;
+      drawing = true;
+      const idx = this.xToIdx(x);
+      const price = this.yToPrice(y);
 
-	  if (this.currentTool === 'trendline') {
-		this.tempTool = { type: 'trendline', i1: idx, p1: price, i2: idx, p2: price };
-	  }
-	  else if (this.currentTool === 'hline') {
-		this.tempTool = { type: 'hline', price, i1: 0, i2: 0, p1: price, p2: price };
-	  }
-	  else if (this.currentTool === 'rect') {
-		this.tempTool = { type: 'rect', i1: idx, p1: price, i2: idx, p2: price };
-	  }
-	  else if (this.currentTool === 'fib') {
-		this.tempTool = { type: 'fib', i1: idx, p1: price, i2: idx, p2: price };
-	  }
-	});
+      if (this.currentTool === 'trendline') {
+        this.tempTool = { type: 'trendline', i1: idx, p1: price, i2: idx, p2: price };
+      } else if (this.currentTool === 'hline') {
+        this.tempTool = { type: 'hline', price, i1: 0, i2: 0, p1: price, p2: price };
+      } else if (this.currentTool === 'rect') {
+        this.tempTool = { type: 'rect', i1: idx, p1: price, i2: idx, p2: price };
+      } else if (this.currentTool === 'fib') {
+        this.tempTool = { type: 'fib', i1: idx, p1: price, i2: idx, p2: price };
+      }
+    });
 
+    canvas.addEventListener('mouseup', e => {
+      if (e.button !== 0) return;
 
-	canvas.addEventListener('mouseup', e => {
-	  // ✅ ONLY left click can finalize drawing
-	  if (e.button !== 0) return;
+      if (priceAxisDragging) {
+        priceAxisDragging = false;
+        canvas.style.cursor = 'crosshair';
+        saveState?.();
+        return;
+      }
 
-	  if (!drawing || !this.tempTool) return;
+      if (!drawing || !this.tempTool) return;
+      this.tools.push(this.tempTool);
+      this.tempTool = null; drawing = false;
+      this.draw(); saveState?.();
+    });
 
-	  this.tools.push(this.tempTool);
-	  this.tempTool = null;
-	  drawing = false;
+    canvas.addEventListener('mouseleave', () => {
+      drawing = false; this.tempTool = null;
+      priceAxisDragging = false;
+      canvas.style.cursor = 'crosshair';
+      this.draw();
+    });
 
-	  this.draw();
-	  saveState?.();
-	});
-	canvas.addEventListener('mouseleave', () => {
-	  drawing = false;
-	  this.tempTool = null;
-	  this.draw();
-	});
-	canvas.addEventListener('contextmenu', e => {
-	  e.preventDefault();
-
-	  drawing = false; // 🚨 CRITICAL FIX
-	  this.currentTool = null;
-	  this.tempTool = null;
-
-	  this.el.querySelectorAll('[data-draw]').forEach(b => b.classList.remove('active'));
-
-	  this.draw();
-	});
+    canvas.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      drawing = false; this.currentTool = null; this.tempTool = null;
+      this.el.querySelectorAll('[data-draw]').forEach(b => b.classList.remove('active'));
+      this.draw();
+    });
 
     body.addEventListener('mousedown', e => {
       if (this.currentTool) return;
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left;
+      if (onPriceAxis(x)) return; // handled by canvas
       panDragging = true; dragX = e.clientX; vsD = this.viewStart; veD = this.viewEnd;
     });
-	body.addEventListener('mousemove', e => {
-	  const r = canvas.getBoundingClientRect();
-	  const x = e.clientX - r.left;
-	  const y = e.clientY - r.top;
 
-	  this.mX = x;
-	  this.mY = y;
+    body.addEventListener('mousemove', e => {
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left;
+      const y = e.clientY - r.top;
 
-	  // ✅ PAN logic
-	  if (panDragging && this.data.length) {
-		const vis = veD - vsD;
-		const delta = (e.clientX - dragX) / canvas.clientWidth * vis;
+      this.mX = x; this.mY = y;
 
-		[this.viewStart, this.viewEnd] = this._clampView(vsD - delta, veD - delta);
-	  }
+      /* Price axis cursor feedback */
+      if (onPriceAxis(x)) {
+        canvas.style.cursor = priceAxisDragging ? 'ns-resize' : 'ns-resize';
+      } else if (!priceAxisDragging) {
+        canvas.style.cursor = this.currentTool ? 'crosshair' : 'crosshair';
+      }
 
-	  // ✅ redraw ALWAYS
-	  this.draw();
-	});
-    body.addEventListener('mouseup',    () => { panDragging = false; });
-    body.addEventListener('mouseleave', () => { panDragging = false; this.mX = -1; this.mY = -1; this.tooltip.style.display = 'none'; this.draw(); });
+      /* Price axis pan drag */
+      if (priceAxisDragging && this.data.length) {
+        const deltaY = y - priceAxisStartY;
+        const range  = (this.hi - this.lo) || 1;
+        // dragging up = shift price range up (positive offset), down = shift down
+        this.priceOffset = priceAxisStartOffset - (deltaY / this.canvas.clientHeight) * range / this.priceScale;
+        this.draw();
+        return;
+      }
+
+      /* Normal pan */
+      if (panDragging && this.data.length) {
+        const vis = veD - vsD;
+        const delta = (e.clientX - dragX) / canvas.clientWidth * vis;
+        [this.viewStart, this.viewEnd] = this._clampView(vsD - delta, veD - delta);
+      }
+
+      this.draw();
+    });
+
+    body.addEventListener('mouseup', () => { panDragging = false; });
+    body.addEventListener('mouseleave', () => {
+      panDragging = false; priceAxisDragging = false;
+      this.mX = -1; this.mY = -1;
+      this.tooltip.style.display = 'none';
+      canvas.style.cursor = 'crosshair';
+      this.draw();
+    });
 
     body.addEventListener('wheel', e => {
       e.preventDefault();
       if (!this.data.length) return;
+
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left;
+
+      /* ── Wheel on price axis = vertical zoom ── */
+      if (onPriceAxis(x)) {
+        const zoomFactor = e.deltaY > 0 ? 0.85 : 1.18; // scroll down = zoom out (shorter candles)
+        this.priceScale = Math.max(0.1, Math.min(20, this.priceScale * zoomFactor));
+        this.draw();
+        return;
+      }
+
+      /* ── Wheel on chart = horizontal zoom (existing) ── */
       const vis = this.viewEnd - this.viewStart;
       const factor = e.deltaY > 0 ? 1.12 : 0.88;
       const newVis = Math.max(10, Math.min(400, vis * factor));
-      const rect = canvas.getBoundingClientRect();
-      const mRatio = (e.clientX - rect.left) / canvas.clientWidth;
+      const mRatio = (e.clientX - r.left) / canvas.clientWidth;
       const mid = this.viewStart + vis * mRatio;
       this.viewStart = mid - newVis * mRatio; this.viewEnd = this.viewStart + newVis;
       [this.viewStart, this.viewEnd] = this._clampView(this.viewStart, this.viewEnd);
       this.draw();
     }, { passive: false });
 
-    /* Double-click canvas — check alerts */
+    /* Double-click on price axis = reset Y zoom/pan */
     canvas.addEventListener('dblclick', e => {
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left;
+
+      if (onPriceAxis(x)) {
+        this.priceScale  = 1.0;
+        this.priceOffset = 0;
+        this.draw();
+        return;
+      }
+
+      /* Double-click on chart = set price alert */
       const price = this.yToPrice(e.offsetY);
       this._alerts.push({ price: +price.toFixed(2), triggered: false });
       this._updateAlertBadge();
@@ -459,6 +517,7 @@ class ChartWindow {
     this.symbol = sym; this.data = []; this.tools = []; this.tempTool = null;
     this.liveCandle = null; this.currentBucket = null;
     this.viewStart = 0; this.viewEnd = 0; this.lo = 0; this.hi = 0;
+    this.priceScale = 1.0; this.priceOffset = 0;
     this.indicators.forEach(ind => { ind.signals = []; ind.overlays = {}; });
     this._lastSignalState = {};
 
@@ -711,6 +770,7 @@ class ChartWindow {
       showVolume: this.showVolume, tools: this.tools,
       viewStart: this.viewStart, viewEnd: this.viewEnd,
       alerts: this._alerts,
+      priceScale: this.priceScale, priceOffset: this.priceOffset,
       pos: { x: parseInt(this.el.style.left) || 0, y: parseInt(this.el.style.top) || 0, w: this.el.offsetWidth, h: this.el.offsetHeight },
       indicators: this.indicators.map(ind => ({ id: ind.id, code: ind.code, enabled: ind.enabled, name: ind.name }))
     };
@@ -722,6 +782,8 @@ class ChartWindow {
     if (s.tools)       this.tools      = s.tools;
     if (s.alerts)      this._alerts    = s.alerts;
     if (s.indicators)  this.indicators = s.indicators.map(ind => ({ ...ind, signals: [], overlays: {}, error: null }));
+    if (s.priceScale  !== undefined) this.priceScale  = s.priceScale;
+    if (s.priceOffset !== undefined) this.priceOffset = s.priceOffset;
     if (s.pos) { this.el.style.left = s.pos.x + 'px'; this.el.style.top = s.pos.y + 'px'; this.el.style.width = s.pos.w + 'px'; this.el.style.height = s.pos.h + 'px'; }
     this._updateAlertBadge();
     if (s.symbol) await this.loadSymbol(s.symbol);

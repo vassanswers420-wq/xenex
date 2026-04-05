@@ -59,12 +59,34 @@ const ChartRenderer = (() => {
 
     const rng = hi - lo || 1;
     lo -= rng * 0.05; hi += rng * 0.05;
+
+    /* ── Apply price axis zoom (scale) and pan (offset) ── */
+    const scale  = win.priceScale  ?? 1.0;
+    const offset = win.priceOffset ?? 0;
+    const mid    = (hi + lo) / 2 + offset;
+    const half   = (hi - lo) / 2 / scale;
+    lo = mid - half;
+    hi = mid + half;
+
     win.lo = lo; win.hi = hi;
 
     const priceY = p => 14 + (1 - (p - lo) / (hi - lo)) * (H - 38);
     const xOf    = i => AP + (i - win.viewStart + 0.5) * candW;
 
     drawGrid(ctx, W, H, AP, lo, hi, C, priceY);
+
+    /* ── Price axis zoom hint (shows when zoomed/panned) ── */
+    if (scale !== 1.0 || offset !== 0) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(240,165,0,0.18)';
+      ctx.fillRect(0, 0, AP - 1, H);
+      ctx.font = '7px monospace';
+      ctx.fillStyle = 'rgba(240,165,0,0.7)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`${scale.toFixed(1)}×`, AP / 2, H - 28);
+      ctx.restore();
+    }
     drawXAxis(ctx, W, H, AP, slice, vis, C, sIdx, xOf);
     if (win.showVolume) drawVolume(ctx, W, H, AP, slice, vis, C, candW, sIdx, xOf);
 
@@ -82,6 +104,24 @@ const ChartRenderer = (() => {
 
     if (win.mX >= AP && win.mX < W && win.mY >= 0 && win.mY < H) {
       drawCrosshair(ctx, win, W, H, AP, vis, priceY, xOf, lo, hi, C);
+    }
+
+    /* ── Price axis hover glow + scroll hint ── */
+    if (win.mX >= 0 && win.mX < AP && win.mY >= 0 && win.mY < H) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(240,165,0,0.07)';
+      ctx.fillRect(0, 0, AP - 1, H);
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = 'rgba(240,165,0,0.6)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('↕', AP / 2, win.mY);
+      ctx.font = '7px monospace';
+      ctx.fillStyle = 'rgba(240,165,0,0.4)';
+      ctx.fillText('scroll=zoom', AP / 2, win.mY + 14);
+      ctx.fillText('drag=pan', AP / 2, win.mY + 23);
+      ctx.fillText('dbl=reset', AP / 2, win.mY + 32);
+      ctx.restore();
     }
 
     const active = win.indicators.filter(x => x.enabled && x.code && x.code.trim());
@@ -207,7 +247,7 @@ const ChartRenderer = (() => {
   }
 
   /* ══════════════════════════════════════════════════
-     INDICATOR OVERLAYS  (bug-fixed + MomentumLaser)
+     INDICATOR OVERLAYS
   ══════════════════════════════════════════════════ */
   function drawIndicatorOverlays(ctx, win, W, H, AP, vis, sIdx, eIdx, candW, lo, hi, priceY, xOf) {
     if (!win.indicators?.length) return;
@@ -215,7 +255,6 @@ const ChartRenderer = (() => {
     ctx.save();
     let colorIdx = 0;
 
-    /* ── polyline helper (FIXED: val & x declared inside loop) ── */
     const drawPolyline = (values, dash) => {
       if (!values?.length) return;
       ctx.setLineDash(dash || []);
@@ -248,8 +287,13 @@ const ChartRenderer = (() => {
       const ov = ind.overlays;
       if (!ov) return;
 
+      /* Only draw SMA/EMA/BB overlays if this indicator has no signals
+         (pure overlay indicators like SMA Cross). Signal-based indicators
+         like MomentumLaser use these internally for logic only — skip them. */
+      const hasAnySignal = ind.signals?.some(s => s?.signal && s.signal !== 'NEUTRAL');
+
       /* SMA lines */
-      (ov.smaLines || []).forEach(line => {
+      if (!hasAnySignal) (ov.smaLines || []).forEach(line => {
         if (!line?.values?.length) return;
         const col = OVERLAY_COLORS[colorIdx++ % OVERLAY_COLORS.length];
         ctx.strokeStyle = col; ctx.lineWidth = 1.6;
@@ -258,7 +302,7 @@ const ChartRenderer = (() => {
       });
 
       /* EMA lines */
-      (ov.emaLines || []).forEach(line => {
+      if (!hasAnySignal) (ov.emaLines || []).forEach(line => {
         if (!line?.values?.length) return;
         const col = OVERLAY_COLORS[colorIdx++ % OVERLAY_COLORS.length];
         ctx.strokeStyle = col; ctx.lineWidth = 1.6;
@@ -267,7 +311,7 @@ const ChartRenderer = (() => {
       });
 
       /* Bollinger Bands */
-      (ov.bbands || []).forEach(bb => {
+      if (!hasAnySignal) (ov.bbands || []).forEach(bb => {
         if (!bb?.upper) return;
         ctx.beginPath();
         let started = false;
@@ -290,14 +334,14 @@ const ChartRenderer = (() => {
       });
 
       /* VWAP */
-      if (ov.vwapLine?.length) {
+      if (!hasAnySignal && ov.vwapLine?.length) {
         ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.6;
         drawPolyline(ov.vwapLine, [6, 3]);
         edgeLabel(ov.vwapLine, 'VWAP', '#f59e0b');
       }
 
       /* OBV — rescaled to price range */
-      if (ov.obvLine?.length) {
+      if (!hasAnySignal && ov.obvLine?.length) {
         const slice2 = ov.obvLine.slice(sIdx, eIdx).filter(v => v != null);
         if (slice2.length) {
           const minO = Math.min(...slice2), maxO = Math.max(...slice2);
@@ -338,10 +382,9 @@ const ChartRenderer = (() => {
       }
 
       /* ════════════════════════════════════════════
-         MOMENTUMLASER — dotted beam + target rect
-         Draws on any indicator that emits BUY/SELL
-         signals (works especially well with the
-         MomentumLaser preset but applies to all)
+         TARGET BOX — draws only the target zone box
+         for any indicator that emits BUY/SELL signals.
+         No beam, no glow, no pulse ring.
       ════════════════════════════════════════════ */
       if (ind.signals?.length) {
         const LASER_BARS = 12;
@@ -352,8 +395,6 @@ const ChartRenderer = (() => {
 
           const isBuy = sig.signal === 'BUY';
           const d     = win.data[i];
-          const srcX  = xOf(i);
-          const srcY  = isBuy ? priceY(d.low) - 22 : priceY(d.high) + 22;
 
           /* inline ATR for target distance */
           let atrVal = 0, atrCount = 0;
@@ -383,50 +424,39 @@ const ChartRenderer = (() => {
           const laserCol = isBuy ? '#00d97e' : '#ff4757';
           const fillA    = isBuy ? 'rgba(0,217,126,0.09)'  : 'rgba(255,71,87,0.09)';
           const bordA    = isBuy ? 'rgba(0,217,126,0.70)'  : 'rgba(255,71,87,0.70)';
-          const glowA    = isBuy ? 'rgba(0,217,126,0.18)'  : 'rgba(255,71,87,0.18)';
 
-          /* beam glow (wider, very faint) */
+          const rx_x = tgtX - rectW / 2;
+          const rx_y = Math.min(tgtTop, tgtBot);
+
+          const srcX = xOf(i);
+          const srcY = isBuy ? priceY(d.low) - 22 : priceY(d.high) + 22;
+
+          /* dotted beam line — no glow, just the core dashed line */
           ctx.save();
           ctx.strokeStyle = laserCol;
-          ctx.lineWidth   = 6;
-          ctx.setLineDash([6, 6]);
-          ctx.globalAlpha = 0.12;
-          ctx.beginPath();
-          ctx.moveTo(srcX, srcY);
-          ctx.lineTo(tgtX - rectW / 2, tgtY);
-          ctx.stroke();
-
-          /* beam core */
           ctx.lineWidth   = 1.5;
+          ctx.setLineDash([6, 6]);
           ctx.globalAlpha = 0.88;
           ctx.beginPath();
           ctx.moveTo(srcX, srcY);
-          ctx.lineTo(tgtX - rectW / 2, tgtY);
+          ctx.lineTo(rx_x, tgtY);
           ctx.stroke();
           ctx.setLineDash([]);
           ctx.globalAlpha = 1;
           ctx.restore();
 
-          /* origin pulse ring */
+          /* origin dot */
           ctx.save();
-          ctx.strokeStyle = laserCol;
-          ctx.lineWidth   = 1;
-          ctx.globalAlpha = 0.45;
-          ctx.beginPath(); ctx.arc(srcX, srcY, 6, 0, Math.PI * 2); ctx.stroke();
-          ctx.globalAlpha = 1;
-          ctx.fillStyle   = laserCol;
+          ctx.fillStyle = laserCol;
           ctx.beginPath(); ctx.arc(srcX, srcY, 3, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
 
           /* target rectangle */
-          const rx   = 4;
-          const rx_x = tgtX - rectW / 2;
-          const rx_y = Math.min(tgtTop, tgtBot);
           ctx.save();
           ctx.fillStyle   = fillA;
           ctx.strokeStyle = bordA;
           ctx.lineWidth   = 1.4;
-          roundRect(ctx, rx_x, rx_y, rectW, rectH, rx);
+          roundRect(ctx, rx_x, rx_y, rectW, rectH, 4);
           ctx.fill(); ctx.stroke();
 
           /* target price text */
@@ -436,7 +466,7 @@ const ChartRenderer = (() => {
           ctx.textBaseline = 'middle';
           ctx.fillText(tgtPrice.toFixed(1), tgtX, tgtY);
 
-          /* "TARGET" micro label */
+          /* "TARGET" micro label above box */
           ctx.font      = '7px monospace';
           ctx.fillStyle = bordA;
           ctx.fillText('TARGET', tgtX, rx_y - 7);
@@ -453,7 +483,7 @@ const ChartRenderer = (() => {
           ctx.restore();
         }
       }
-      /* ── end MomentumLaser ── */
+      /* ── end target box ── */
     });
 
     ctx.restore();

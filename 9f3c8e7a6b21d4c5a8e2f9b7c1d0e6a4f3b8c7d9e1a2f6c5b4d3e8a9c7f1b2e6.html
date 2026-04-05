@@ -219,7 +219,21 @@ html,body{height:100%;width:100%;background:var(--bg0);color:var(--text1);font-f
 .bt-stat{text-align:center}
 .bt-val{font-size:13px;font-weight:700;color:var(--text1)}
 .bt-lbl{font-size:8px;color:var(--text3);margin-top:1px}
+/* ── Add these two lines to your existing CSS in index.html ──
+   Find ".chart-body{" and ".chart-canvas{" and add the properties below.
+   Or just paste this block anywhere inside your <style> tag. ── */
 
+.chart-body  { touch-action: none; user-select: none; -webkit-user-select: none; }
+.chart-canvas{ touch-action: none; }
+
+/* Prevent iOS rubber-band scroll interfering with chart panning */
+body { overscroll-behavior: none; }
+
+/* Make buttons finger-friendly on mobile */
+.win-btn     { width: 14px; height: 14px; }
+.draw-btn    { padding: 4px 8px; font-size: 9px; }
+.ct-btn      { width: 26px; height: 24px; }
+.ph-icon-btn { padding: 4px 8px; }
 /* ═══ SETTINGS MODAL ═══ */
 #settings-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center}
 #settings-modal.open{display:flex}

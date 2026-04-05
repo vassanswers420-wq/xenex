@@ -991,6 +991,39 @@ async function init() {
 }
 
 init();
+
+(function(){
+  /* Convert a touchend into a click on the real target,
+     only if the finger didn't move much (i.e. it's a tap, not a scroll/drag). */
+  let _tx = 0, _ty = 0;
+
+  document.addEventListener('touchstart', e => {
+    _tx = e.touches[0].clientX;
+    _ty = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    const dx = Math.abs(e.changedTouches[0].clientX - _tx);
+    const dy = Math.abs(e.changedTouches[0].clientY - _ty);
+    if (dx > 10 || dy > 10) return;          // was a swipe, not a tap
+
+    const touch = e.changedTouches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!el) return;
+
+    /* Don't double-fire on elements that already handle touchend themselves
+       (canvas bodies, chart-body, sidebar are handled in chart-window.js) */
+    const skip = el.closest('.chart-body, .chart-canvas, .win-titlebar, .resize-handle');
+    if (skip) return;
+
+    /* Synthesise a click so all existing click listeners fire */
+    e.preventDefault();
+    el.dispatchEvent(new MouseEvent('click', {
+      bubbles: true, cancelable: true,
+      clientX: touch.clientX, clientY: touch.clientY
+    }));
+  }, { passive: false });
+})();
 </script>
 </body>
 </html>

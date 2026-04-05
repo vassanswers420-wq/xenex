@@ -5,6 +5,10 @@
 <title>TixWatcher — NSE Terminal</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 /* ═══ RESET & ROOT ═══ */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -257,7 +261,54 @@ body { overscroll-behavior: none; }
 .swatch-matrix .sw-bg{background:#000300}.swatch-matrix .sw-up{background:#00ff41}.swatch-matrix .sw-dn{background:#ff2828}.swatch-matrix .sw-ac{background:#39ff14}
 .swatch-midnight .sw-bg{background:#0b0c1a}.swatch-midnight .sw-up{background:#7fff7f}.swatch-midnight .sw-dn{background:#ff7fa8}.swatch-midnight .sw-ac{background:#9f7cff}
 .settings-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+/* ═══ MOBILE / TOUCH LAYOUT ═══ */
+@media (max-width: 768px) {
+  #sidebar { display: none; }
+  #topbar  { padding: 0 8px; gap: 6px; }
+  .logo    { font-size: 11px; }
+  .ver-tag, .live-chip, .top-divider { display: none; }
+  #menubar { padding: 0 4px; gap: 0; overflow-x: auto; }
+  .menu-item { padding: 5px 8px; font-size: 9px; }
+  #add-panel-btn { padding: 4px 8px; font-size: 9px; }
 
+  .panel-header { height: auto; flex-wrap: wrap; gap: 4px; padding: 4px 6px; }
+  .draw-btns    { padding-left: 0; border-left: none; flex-wrap: wrap; }
+  .draw-btn     { font-size: 9px; padding: 4px 8px; min-height: 28px; }
+  .ct-btn       { width: 28px; height: 28px; }
+  .ph-icon-btn  { padding: 5px 10px; min-height: 28px; }
+  .ind-launch-btn { font-size: 14px; padding: 4px 6px; }
+
+  .win-titlebar { height: 36px; padding: 0 6px; }
+  .win-btn      { width: 14px; height: 14px; }
+  .win-sym-badge { font-size: 11px; }
+  .win-price-badge { font-size: 11px; }
+
+  .resize-handle { width: 24px; height: 24px; }
+  .resize-handle::after { width: 10px; height: 10px; bottom: 5px; right: 5px; border-width: 2.5px; }
+
+  /* Indicator modal full-screen on mobile */
+  #ind-modal { padding-top: 0; }
+  .ind-panel { width: 100%; max-width: 100%; max-height: 100vh; border-radius: 0; }
+  .ind-body  { flex-direction: column; }
+  .ind-sidebar { width: 100%; max-height: 240px; border-right: none; border-bottom: 1px solid var(--border); }
+  .ind-preset-scroll { max-height: 120px; }
+
+  /* Settings modal */
+  .settings-panel { width: 95%; }
+  .theme-grid     { grid-template-columns: repeat(3, 1fr); }
+
+  /* Watchlist sidebar becomes a sheet — show only on explicit toggle */
+  #sidebar.mobile-open { display: flex; position: fixed; top: 68px; left: 0; bottom: 22px; z-index: 300; box-shadow: 4px 0 24px rgba(0,0,0,.6); }
+
+  /* Status bar */
+  #statusbar { font-size: 8px; padding: 0 8px; gap: 8px; }
+}
+
+/* Prevent iOS rubber-band on the workspace */
+#workspace { overscroll-behavior: none; touch-action: none; }
+.chart-body   { touch-action: none; user-select: none; -webkit-user-select: none; }
+.chart-canvas { touch-action: none; }
+body          { overscroll-behavior: none; touch-action: manipulation; }
 /* ═══ TOASTS ═══ */
 #toast-container{position:fixed;bottom:30px;right:14px;display:flex;flex-direction:column-reverse;gap:6px;z-index:9999;pointer-events:none;max-width:240px}
 
@@ -862,8 +913,21 @@ document.addEventListener('keydown', e => {
 
 /* ── Sidebar ── */
 document.getElementById('sidebar-toggle').addEventListener('click', () => {
-  document.getElementById('sidebar').classList.toggle('collapsed');
+  const sb = document.getElementById('sidebar');
+  if (window.innerWidth <= 768) {
+    /* mobile: slide-in sheet */
+    sb.classList.toggle('mobile-open');
+  } else {
+    sb.classList.toggle('collapsed');
+  }
 });
+
+/* Close sidebar sheet when clicking outside (mobile) */
+document.getElementById('workspace').addEventListener('touchstart', () => {
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('mobile-open');
+  }
+}, { passive: true });
 document.getElementById('wl-search')?.addEventListener('input', buildWatchlist);
 document.getElementById('wl-add-btn')?.addEventListener('click', () => {
   const SYMBOLS = window.DataProvider.SYMBOLS;

@@ -291,159 +291,275 @@ class ChartWindow {
     requestAnimationFrame(() => this.resize());
   }
 
-  _setupDrag(handle) {
-    let dragging = false, ox = 0, oy = 0;
-    handle.addEventListener('mousedown', e => {
-      if (e.target.classList.contains('win-btn') || this.maximized) return;
-      dragging = true; ox = e.clientX - this.el.offsetLeft; oy = e.clientY - this.el.offsetTop;
-      this.el.classList.add('dragging'); this._focus(); e.preventDefault();
-    });
-    document.addEventListener('mousemove', e => {
-      if (!dragging) return;
-      const ws = document.getElementById('workspace').getBoundingClientRect();
-      this.el.style.left = Math.max(0, Math.min(e.clientX - ox, ws.width  - 100)) + 'px';
-      this.el.style.top  = Math.max(0, Math.min(e.clientY - oy, ws.height - 50))  + 'px';
-    });
-    document.addEventListener('mouseup', () => { if (dragging) { dragging = false; this.el.classList.remove('dragging'); } });
-  }
+	_setupDrag(handle) {
+	  let dragging = false, ox = 0, oy = 0;
 
-  _setupResize(handle) {
-    let resizing = false, sx = 0, sy = 0, sw = 0, sh = 0;
-    handle.addEventListener('mousedown', e => {
-      if (this.maximized) return;
-      resizing = true; sx = e.clientX; sy = e.clientY; sw = this.el.offsetWidth; sh = this.el.offsetHeight;
-      e.preventDefault(); e.stopPropagation();
-    });
-    document.addEventListener('mousemove', e => {
-      if (!resizing) return;
-      this.el.style.width  = Math.max(300, sw + (e.clientX - sx)) + 'px';
-      this.el.style.height = Math.max(200, sh + (e.clientY - sy)) + 'px';
-      this.resize();
-    });
-    document.addEventListener('mouseup', () => { if (resizing) { resizing = false; saveState?.(); } });
-  }
+	  const startDrag = (cx, cy) => {
+		dragging = true;
+		ox = cx - this.el.offsetLeft;
+		oy = cy - this.el.offsetTop;
+		this.el.classList.add('dragging'); this._focus();
+	  };
+	  const moveDrag = (cx, cy) => {
+		if (!dragging) return;
+		const ws = document.getElementById('workspace').getBoundingClientRect();
+		this.el.style.left = Math.max(0, Math.min(cx - ox, ws.width  - 100)) + 'px';
+		this.el.style.top  = Math.max(0, Math.min(cy - oy, ws.height - 50))  + 'px';
+	  };
+	  const endDrag = () => { if (dragging) { dragging = false; this.el.classList.remove('dragging'); } };
 
-  _setupCanvasEvents() {
-    const canvas = this.canvas, body = this.el.querySelector('.chart-body');
-    let drawing = false, panDragging = false, dragX = 0, vsD = 0, veD = 0;
+	  handle.addEventListener('mousedown', e => {
+		if (e.target.classList.contains('win-btn') || this.maximized) return;
+		startDrag(e.clientX, e.clientY); e.preventDefault();
+	  });
+	  document.addEventListener('mousemove', e => moveDrag(e.clientX, e.clientY));
+	  document.addEventListener('mouseup', endDrag);
 
-	canvas.addEventListener('mousedown', e => {
-	  // ✅ RIGHT CLICK = cancel (do this FIRST)
-	  if (e.button === 2) {
-		this.tempTool = null;
-		drawing = false;
+	  /* Touch drag on titlebar */
+	  handle.addEventListener('touchstart', e => {
+		if (this.maximized) return;
+		this._focus(); startDrag(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault();
+	  }, { passive: false });
+	  handle.addEventListener('touchmove', e => {
+		moveDrag(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault();
+	  }, { passive: false });
+	  handle.addEventListener('touchend', endDrag);
+	}
+
+	_setupResize(handle) {
+	  let resizing = false, sx = 0, sy = 0, sw = 0, sh = 0;
+
+	  const startResize = (cx, cy) => {
+		resizing = true; sx = cx; sy = cy;
+		sw = this.el.offsetWidth; sh = this.el.offsetHeight;
+	  };
+	  const moveResize = (cx, cy) => {
+		if (!resizing) return;
+		this.el.style.width  = Math.max(300, sw + (cx - sx)) + 'px';
+		this.el.style.height = Math.max(200, sh + (cy - sy)) + 'px';
+		this.resize();
+	  };
+	  const endResize = () => { if (resizing) { resizing = false; saveState?.(); } };
+
+	  handle.addEventListener('mousedown', e => {
+		if (this.maximized) return;
+		startResize(e.clientX, e.clientY); e.preventDefault(); e.stopPropagation();
+	  });
+	  document.addEventListener('mousemove', e => moveResize(e.clientX, e.clientY));
+	  document.addEventListener('mouseup', endResize);
+
+	  handle.addEventListener('touchstart', e => {
+		if (this.maximized) return;
+		startResize(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); e.stopPropagation();
+	  }, { passive: false });
+	  document.addEventListener('touchmove', e => {
+		if (resizing) { moveResize(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }
+	  }, { passive: false });
+	  document.addEventListener('touchend', endResize);
+	}
+
+	_setupCanvasEvents() {
+	  const canvas = this.canvas, body = this.el.querySelector('.chart-body');
+	  let drawing = false, panDragging = false, dragX = 0, vsD = 0, veD = 0;
+
+	  /* ─── Pinch-to-zoom state ─── */
+	  let pinching = false, pinchDist0 = 0, vsP = 0, veP = 0, pinchMidRatio = 0.5;
+
+	  /* ─── Helper: get touch distance ─── */
+	  const getTouchDist  = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+	  const getTouchMidX  = (t, rect) => ((t[0].clientX + t[1].clientX) / 2) - rect.left;
+
+	  /* ─── Helper: unified pointer position from mouse OR touch ─── */
+	  const evPos = (e, rect) => {
+		if (e.touches?.length) {
+		  return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+		}
+		return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+	  };
+
+	  /* ════════════ CANVAS DRAW TOOL EVENTS ════════════ */
+
+	  const onPointerDown = e => {
+		const isMouse = !e.touches;
+		if (isMouse && e.button === 2) {
+		  this.tempTool = null; drawing = false; this.draw(); return;
+		}
+		if (isMouse && e.button !== 0) return;
+		if (!this.currentTool) return;
+
+		const r = canvas.getBoundingClientRect();
+		const { x, y } = evPos(e, r);
+		drawing = true;
+		const idx   = this.xToIdx(x);
+		const price = this.yToPrice(y);
+
+		if      (this.currentTool === 'trendline') this.tempTool = { type:'trendline', i1:idx, p1:price, i2:idx, p2:price };
+		else if (this.currentTool === 'hline')     this.tempTool = { type:'hline', price, i1:0, i2:0, p1:price, p2:price };
+		else if (this.currentTool === 'rect')      this.tempTool = { type:'rect', i1:idx, p1:price, i2:idx, p2:price };
+		else if (this.currentTool === 'fib')       this.tempTool = { type:'fib', i1:idx, p1:price, i2:idx, p2:price };
+	  };
+
+	  const onPointerMove = e => {
+		const r = canvas.getBoundingClientRect();
+		const { x, y } = evPos(e, r);
+		this.mX = x; this.mY = y;
+		if (!drawing || !this.tempTool) return;
+		const idx   = this.xToIdx(x);
+		const price = this.yToPrice(y);
+		if (this.tempTool.type === 'hline') { this.tempTool.price = price; this.tempTool.p1 = price; this.tempTool.p2 = price; }
+		else { this.tempTool.i2 = idx; this.tempTool.p2 = price; }
 		this.draw();
-		return;
-	  }
+	  };
 
-	  // ✅ ONLY allow LEFT click
-	  if (e.button !== 0) return;
+	  const onPointerUp = e => {
+		const isMouse = !e.changedTouches;
+		if (isMouse && e.button !== 0) return;
+		if (!drawing || !this.tempTool) return;
+		this.tools.push(this.tempTool);
+		this.tempTool = null; drawing = false;
+		this.draw(); saveState?.();
+	  };
 
-	  if (!this.currentTool) return;
+	  /* Mouse */
+	  canvas.addEventListener('mousedown',  onPointerDown);
+	  canvas.addEventListener('mouseup',    onPointerUp);
+	  canvas.addEventListener('mouseleave', () => { drawing = false; this.tempTool = null; this.draw(); });
+	  canvas.addEventListener('contextmenu', e => {
+		e.preventDefault(); drawing = false; this.currentTool = null; this.tempTool = null;
+		this.el.querySelectorAll('[data-draw]').forEach(b => b.classList.remove('active'));
+		this.draw();
+	  });
 
-	  const r = canvas.getBoundingClientRect();
-	  const x = e.clientX - r.left;
-	  const y = e.clientY - r.top;
+	  /* Touch (draw tools) */
+	  canvas.addEventListener('touchstart', e => {
+		if (e.touches.length === 1 && this.currentTool) {
+		  e.preventDefault(); onPointerDown(e);
+		}
+	  }, { passive: false });
+	  canvas.addEventListener('touchend', e => {
+		if (this.currentTool) { e.preventDefault(); onPointerUp(e); }
+	  }, { passive: false });
 
-	  drawing = true;
+	  /* ════════════ BODY PAN + TOUCH EVENTS ════════════ */
 
-	  const idx = this.xToIdx(x);
-	  const price = this.yToPrice(y);
+	  body.addEventListener('mousedown', e => {
+		if (this.currentTool) return;
+		panDragging = true; dragX = e.clientX; vsD = this.viewStart; veD = this.viewEnd;
+	  });
+	  body.addEventListener('mousemove', e => {
+		const r = canvas.getBoundingClientRect();
+		const x = e.clientX - r.left, y = e.clientY - r.top;
+		this.mX = x; this.mY = y;
+		if (panDragging && this.data.length && !this.currentTool) {
+		  const vis = veD - vsD;
+		  const delta = (e.clientX - dragX) / canvas.clientWidth * vis;
+		  [this.viewStart, this.viewEnd] = this._clampView(vsD - delta, veD - delta);
+		}
+		this.draw();
+	  });
+	  body.addEventListener('mouseup',    () => { panDragging = false; });
+	  body.addEventListener('mouseleave', () => { panDragging = false; this.mX = -1; this.mY = -1; this.tooltip.style.display = 'none'; this.draw(); });
 
-	  if (this.currentTool === 'trendline') {
-		this.tempTool = { type: 'trendline', i1: idx, p1: price, i2: idx, p2: price };
-	  }
-	  else if (this.currentTool === 'hline') {
-		this.tempTool = { type: 'hline', price, i1: 0, i2: 0, p1: price, p2: price };
-	  }
-	  else if (this.currentTool === 'rect') {
-		this.tempTool = { type: 'rect', i1: idx, p1: price, i2: idx, p2: price };
-	  }
-	  else if (this.currentTool === 'fib') {
-		this.tempTool = { type: 'fib', i1: idx, p1: price, i2: idx, p2: price };
-	  }
-	});
+	  /* ── Touch pan & pinch-zoom ── */
+	  body.addEventListener('touchstart', e => {
+		if (this.currentTool) return;
+		e.preventDefault();
+		if (e.touches.length === 1) {
+		  /* single-finger pan */
+		  pinching = false;
+		  panDragging = true;
+		  dragX = e.touches[0].clientX;
+		  vsD = this.viewStart; veD = this.viewEnd;
+		  /* crosshair */
+		  const r = canvas.getBoundingClientRect();
+		  this.mX = e.touches[0].clientX - r.left;
+		  this.mY = e.touches[0].clientY - r.top;
+		  this.draw();
+		} else if (e.touches.length === 2) {
+		  /* two-finger pinch */
+		  panDragging = false; pinching = true;
+		  pinchDist0     = getTouchDist(e.touches);
+		  vsP = this.viewStart; veP = this.viewEnd;
+		  const r = canvas.getBoundingClientRect();
+		  pinchMidRatio  = Math.max(0, Math.min(1, getTouchMidX(e.touches, r) / canvas.clientWidth));
+		}
+	  }, { passive: false });
 
+	  body.addEventListener('touchmove', e => {
+		if (this.currentTool) return;
+		e.preventDefault();
+		if (e.touches.length === 1 && panDragging && this.data.length) {
+		  const vis   = veD - vsD;
+		  const delta = (e.touches[0].clientX - dragX) / canvas.clientWidth * vis;
+		  [this.viewStart, this.viewEnd] = this._clampView(vsD - delta, veD - delta);
+		  const r = canvas.getBoundingClientRect();
+		  this.mX = e.touches[0].clientX - r.left;
+		  this.mY = e.touches[0].clientY - r.top;
+		  this.draw();
+		} else if (e.touches.length === 2 && pinching && this.data.length) {
+		  const dist   = getTouchDist(e.touches);
+		  const scale  = pinchDist0 / dist;            // >1 = zoom in, <1 = zoom out
+		  const vis0   = veP - vsP;
+		  const newVis = Math.max(10, Math.min(400, vis0 * scale));
+		  const mid    = vsP + vis0 * pinchMidRatio;
+		  const ns     = mid - newVis * pinchMidRatio;
+		  [this.viewStart, this.viewEnd] = this._clampView(ns, ns + newVis);
+		  this.draw();
+		}
+	  }, { passive: false });
 
-	canvas.addEventListener('mouseup', e => {
-	  // ✅ ONLY left click can finalize drawing
-	  if (e.button !== 0) return;
+	  body.addEventListener('touchend', e => {
+		if (this.currentTool) return;
+		if (e.touches.length === 0) { panDragging = false; pinching = false; }
+		else if (e.touches.length === 1) {
+		  /* dropped one finger during pinch → resume pan */
+		  pinching  = false; panDragging = true;
+		  dragX     = e.touches[0].clientX;
+		  vsD = this.viewStart; veD = this.viewEnd;
+		}
+	  }, { passive: false });
 
-	  if (!drawing || !this.tempTool) return;
+	  body.addEventListener('touchcancel', () => { panDragging = false; pinching = false; });
 
-	  this.tools.push(this.tempTool);
-	  this.tempTool = null;
-	  drawing = false;
+	  /* ── Mouse wheel zoom (unchanged) ── */
+	  body.addEventListener('wheel', e => {
+		e.preventDefault();
+		if (!this.data.length) return;
+		const vis    = this.viewEnd - this.viewStart;
+		const factor = e.deltaY > 0 ? 1.12 : 0.88;
+		const newVis = Math.max(10, Math.min(400, vis * factor));
+		const rect   = canvas.getBoundingClientRect();
+		const mRatio = (e.clientX - rect.left) / canvas.clientWidth;
+		const mid    = this.viewStart + vis * mRatio;
+		this.viewStart = mid - newVis * mRatio; this.viewEnd = this.viewStart + newVis;
+		[this.viewStart, this.viewEnd] = this._clampView(this.viewStart, this.viewEnd);
+		this.draw();
+	  }, { passive: false });
 
-	  this.draw();
-	  saveState?.();
-	});
-	canvas.addEventListener('mouseleave', () => {
-	  drawing = false;
-	  this.tempTool = null;
-	  this.draw();
-	});
-	canvas.addEventListener('contextmenu', e => {
-	  e.preventDefault();
-
-	  drawing = false; // 🚨 CRITICAL FIX
-	  this.currentTool = null;
-	  this.tempTool = null;
-
-	  this.el.querySelectorAll('[data-draw]').forEach(b => b.classList.remove('active'));
-
-	  this.draw();
-	});
-
-    body.addEventListener('mousedown', e => {
-      if (this.currentTool) return;
-      panDragging = true; dragX = e.clientX; vsD = this.viewStart; veD = this.viewEnd;
-    });
-	body.addEventListener('mousemove', e => {
-	  const r = canvas.getBoundingClientRect();
-	  const x = e.clientX - r.left;
-	  const y = e.clientY - r.top;
-
-	  this.mX = x;
-	  this.mY = y;
-
-	  // ✅ PAN logic
-	  if (panDragging && this.data.length) {
-		const vis = veD - vsD;
-		const delta = (e.clientX - dragX) / canvas.clientWidth * vis;
-
-		[this.viewStart, this.viewEnd] = this._clampView(vsD - delta, veD - delta);
-	  }
-
-	  // ✅ redraw ALWAYS
-	  this.draw();
-	});
-    body.addEventListener('mouseup',    () => { panDragging = false; });
-    body.addEventListener('mouseleave', () => { panDragging = false; this.mX = -1; this.mY = -1; this.tooltip.style.display = 'none'; this.draw(); });
-
-    body.addEventListener('wheel', e => {
-      e.preventDefault();
-      if (!this.data.length) return;
-      const vis = this.viewEnd - this.viewStart;
-      const factor = e.deltaY > 0 ? 1.12 : 0.88;
-      const newVis = Math.max(10, Math.min(400, vis * factor));
-      const rect = canvas.getBoundingClientRect();
-      const mRatio = (e.clientX - rect.left) / canvas.clientWidth;
-      const mid = this.viewStart + vis * mRatio;
-      this.viewStart = mid - newVis * mRatio; this.viewEnd = this.viewStart + newVis;
-      [this.viewStart, this.viewEnd] = this._clampView(this.viewStart, this.viewEnd);
-      this.draw();
-    }, { passive: false });
-
-    /* Double-click canvas — check alerts */
-    canvas.addEventListener('dblclick', e => {
-      const price = this.yToPrice(e.offsetY);
-      this._alerts.push({ price: +price.toFixed(2), triggered: false });
-      this._updateAlertBadge();
-      this._showToast(`Alert set @ ${price.toFixed(2)}`, 'info');
-      saveState?.();
-    });
-  }
+	  /* ── Double-tap OR dblclick → set price alert ── */
+	  let lastTap = 0;
+	  canvas.addEventListener('touchend', e => {
+		if (this.currentTool) return;
+		const now = Date.now();
+		if (now - lastTap < 300 && e.changedTouches.length === 1) {
+		  const r   = canvas.getBoundingClientRect();
+		  const y   = e.changedTouches[0].clientY - r.top;
+		  const price = this.yToPrice(y);
+		  this._alerts.push({ price: +price.toFixed(2), triggered: false });
+		  this._updateAlertBadge();
+		  this._showToast(`Alert set @ ${price.toFixed(2)}`, 'info');
+		  saveState?.();
+		}
+		lastTap = now;
+	  });
+	  canvas.addEventListener('dblclick', e => {
+		const price = this.yToPrice(e.offsetY);
+		this._alerts.push({ price: +price.toFixed(2), triggered: false });
+		this._updateAlertBadge();
+		this._showToast(`Alert set @ ${price.toFixed(2)}`, 'info');
+		saveState?.();
+	  });
+	}
 
   /* ─────── LIVE DATA ─────── */
   async loadSymbol(sym) {

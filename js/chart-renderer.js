@@ -339,137 +339,137 @@ const ChartRenderer = (() => {
 	}
 
   /* ─── Indicator Overlays ─── */
-  function drawIndicatorOverlays(ctx, win, W, H, AP, vis, sIdx, eIdx, candW, lo, hi, priceY, xOf) {
-    if (!win.indicators?.length) return;
-    const C = window.ThemeManager.C;
+function drawIndicatorOverlays(ctx, win, W, H, AP, vis, sIdx, eIdx, candW, lo, hi, priceY, xOf) {
+  if (!win.indicators?.length) return;
+  const C = window.ThemeManager.C;
 
-    ctx.save();
-    let colorIdx = 0;
-	const y = priceY(val);
-    const drawPolyline = (values, dash) => {
-      if (!values?.length) return;
-      ctx.setLineDash(dash || []);
-      ctx.beginPath();
-      let started = false;
-      for (let i = sIdx; i < eIdx && i < values.length; i++) {
-        const val = values[i];
-        if (val === null || val === undefined || isNaN(val)) { started = false; continue; }
-        y = priceY(val);
-        // Use absolute xOf with bar-index offset
-        const x = xOf(i);
-        if (!started) { ctx.moveTo(absX, y); started = true; } else ctx.lineTo(absX, y);
-      }
-      ctx.stroke();
-      ctx.setLineDash([]);
-    };
+  ctx.save();
+  let colorIdx = 0;
 
-    const edgeLabel = (values, text, color) => {
-      let lastV = null;
-      for (let i = Math.min(eIdx, values.length) - 1; i >= sIdx; i--) {
-        if (values[i] != null && !isNaN(values[i])) { lastV = values[i]; break; }
-      }
-      if (lastV === null) return;
-      ctx.fillStyle = color; ctx.font = '8px monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(text, W - 4, priceY(lastV));
-    };
+  // FIX: y and val are local to the loop, not hoisted
+  const drawPolyline = (values, dash) => {
+    if (!values?.length) return;
+    ctx.setLineDash(dash || []);
+    ctx.beginPath();
+    let started = false;
+    for (let i = sIdx; i < eIdx && i < values.length; i++) {
+      const val = values[i];
+      if (val === null || val === undefined || isNaN(val)) { started = false; continue; }
+      const y = priceY(val);
+      const x = xOf(i); // FIX: was "absX" which was never defined
+      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
 
-    win.indicators.forEach(ind => {
-      if (!ind.enabled) return;
-      const ov = ind.overlays;
-      if (!ov) return;
+  const edgeLabel = (values, text, color) => {
+    let lastV = null;
+    for (let i = Math.min(eIdx, values.length) - 1; i >= sIdx; i--) {
+      if (values[i] != null && !isNaN(values[i])) { lastV = values[i]; break; }
+    }
+    if (lastV === null) return;
+    ctx.fillStyle = color; ctx.font = '8px monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, W - 4, priceY(lastV));
+  };
 
-      /* SMA */
-      (ov.smaLines || []).forEach(line => {
-        if (!line?.values?.length) return;
-        const col = OVERLAY_COLORS[colorIdx++ % OVERLAY_COLORS.length];
-        ctx.strokeStyle = col; ctx.lineWidth = 1.6;
-        drawPolyline(line.values);
-        edgeLabel(line.values, line.label || 'SMA', col);
-      });
+  win.indicators.forEach(ind => {
+    if (!ind.enabled) return;
+    const ov = ind.overlays;
+    if (!ov) return;
 
-      /* EMA */
-      (ov.emaLines || []).forEach(line => {
-        if (!line?.values?.length) return;
-        const col = OVERLAY_COLORS[colorIdx++ % OVERLAY_COLORS.length];
-        ctx.strokeStyle = col; ctx.lineWidth = 1.6;
-        drawPolyline(line.values, [5, 3]);
-        edgeLabel(line.values, line.label || 'EMA', col);
-      });
-
-      /* Bollinger Bands */
-      (ov.bbands || []).forEach(bb => {
-        if (!bb?.upper) return;
-        /* Fill band */
-        ctx.beginPath();
-        let started = false;
-        for (let i = sIdx; i < eIdx && i < bb.upper.length; i++) {
-          if (bb.upper[i] == null) { started = false; continue; }
-          const absX = xOf(i); // ✅ CLEAN + CONSISTENT
-          if (!started) { ctx.moveTo(absX, priceY(bb.upper[i])); started = true; }
-          else ctx.lineTo(absX, priceY(bb.upper[i]));
-        }
-        for (let i = Math.min(eIdx, bb.lower.length) - 1; i >= sIdx; i--) {
-          if (bb.lower[i] == null) continue;
-          ctx.lineTo(xOf(i), priceY(bb.lower[i]));
-        }
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(139,92,246,0.06)'; ctx.fill();
-        ctx.strokeStyle = 'rgba(139,92,246,0.7)'; ctx.lineWidth = 1;
-        drawPolyline(bb.upper); drawPolyline(bb.lower);
-        ctx.strokeStyle = 'rgba(139,92,246,0.35)'; drawPolyline(bb.mid, [4, 4]);
-        edgeLabel(bb.upper, 'BB', 'rgba(139,92,246,0.9)');
-      });
-
-      /* VWAP */
-      if (ov.vwapLine?.length) {
-        ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.6;
-        drawPolyline(ov.vwapLine, [6, 3]);
-        edgeLabel(ov.vwapLine, 'VWAP', '#f59e0b');
-      }
-
-      /* OBV — rescale to price range for display */
-      if (ov.obvLine?.length) {
-        const slice2 = ov.obvLine.slice(sIdx, eIdx).filter(v => v != null);
-        if (slice2.length) {
-          const minO = Math.min(...slice2), maxO = Math.max(...slice2);
-          const scaleO = v => priceY(lo + (v - minO) / (maxO - minO + 1) * (hi - lo));
-          ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.2;
-          ctx.setLineDash([3, 2]);
-          ctx.beginPath(); let started = false;
-          for (let i = sIdx; i < eIdx && i < ov.obvLine.length; i++) {
-            if (ov.obvLine[i] == null) { started = false; continue; }
-            const x = xOf(i);
-            if (!started) { ctx.moveTo(absX, scaleO(ov.obvLine[i])); started = true; }
-            else ctx.lineTo(absX, scaleO(ov.obvLine[i]));
-          }
-          ctx.stroke(); ctx.setLineDash([]);
-        }
-      }
-
-      /* Signals (BUY/SELL arrows) */
-      if (ind.signals?.length) {
-        const C2 = window.ThemeManager.C;
-        ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
-        for (let i = sIdx; i < eIdx && i < win.data.length && i < ind.signals.length; i++) {
-          const sig = ind.signals[i];
-          if (!sig?.signal || sig.signal === 'NEUTRAL') continue;
-          const d = win.data[i], absX = AP + (i - win.viewStart + 0.5) * candW;
-          const isBuy = sig.signal === 'BUY';
-          const arrowY = isBuy ? priceY(d.low) + 18 : priceY(d.high) - 18;
-          ctx.fillStyle = isBuy ? C2.up : C2.dn;
-          ctx.textBaseline = 'middle';
-          ctx.fillText(isBuy ? '▲' : '▼', absX, arrowY);
-          if (sig.label) {
-            ctx.font = '7px monospace';
-            ctx.fillText(sig.label, absX, arrowY + (isBuy ? 11 : -11));
-            ctx.font = 'bold 11px monospace';
-          }
-        }
-      }
+    /* SMA */
+    (ov.smaLines || []).forEach(line => {
+      if (!line?.values?.length) return;
+      const col = OVERLAY_COLORS[colorIdx++ % OVERLAY_COLORS.length];
+      ctx.strokeStyle = col; ctx.lineWidth = 1.6;
+      drawPolyline(line.values);
+      edgeLabel(line.values, line.label || 'SMA', col);
     });
 
-    ctx.restore();
-  }
+    /* EMA */
+    (ov.emaLines || []).forEach(line => {
+      if (!line?.values?.length) return;
+      const col = OVERLAY_COLORS[colorIdx++ % OVERLAY_COLORS.length];
+      ctx.strokeStyle = col; ctx.lineWidth = 1.6;
+      drawPolyline(line.values, [5, 3]);
+      edgeLabel(line.values, line.label || 'EMA', col);
+    });
+
+    /* Bollinger Bands */
+    (ov.bbands || []).forEach(bb => {
+      if (!bb?.upper) return;
+      ctx.beginPath();
+      let started = false;
+      for (let i = sIdx; i < eIdx && i < bb.upper.length; i++) {
+        if (bb.upper[i] == null) { started = false; continue; }
+        const x = xOf(i); // FIX: was absX
+        if (!started) { ctx.moveTo(x, priceY(bb.upper[i])); started = true; }
+        else ctx.lineTo(x, priceY(bb.upper[i]));
+      }
+      for (let i = Math.min(eIdx, bb.lower.length) - 1; i >= sIdx; i--) {
+        if (bb.lower[i] == null) continue;
+        ctx.lineTo(xOf(i), priceY(bb.lower[i]));
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(139,92,246,0.06)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(139,92,246,0.7)'; ctx.lineWidth = 1;
+      drawPolyline(bb.upper); drawPolyline(bb.lower);
+      ctx.strokeStyle = 'rgba(139,92,246,0.35)'; drawPolyline(bb.mid, [4, 4]);
+      edgeLabel(bb.upper, 'BB', 'rgba(139,92,246,0.9)');
+    });
+
+    /* VWAP */
+    if (ov.vwapLine?.length) {
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.6;
+      drawPolyline(ov.vwapLine, [6, 3]);
+      edgeLabel(ov.vwapLine, 'VWAP', '#f59e0b');
+    }
+
+    /* OBV — rescale to price range for display */
+    if (ov.obvLine?.length) {
+      const slice2 = ov.obvLine.slice(sIdx, eIdx).filter(v => v != null);
+      if (slice2.length) {
+        const minO = Math.min(...slice2), maxO = Math.max(...slice2);
+        const scaleO = v => priceY(lo + (v - minO) / (maxO - minO + 1) * (hi - lo));
+        ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.2;
+        ctx.setLineDash([3, 2]);
+        ctx.beginPath(); let started = false;
+        for (let i = sIdx; i < eIdx && i < ov.obvLine.length; i++) {
+          if (ov.obvLine[i] == null) { started = false; continue; }
+          const x = xOf(i); // FIX: was absX
+          if (!started) { ctx.moveTo(x, scaleO(ov.obvLine[i])); started = true; }
+          else ctx.lineTo(x, scaleO(ov.obvLine[i]));
+        }
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+
+    /* Signals (BUY/SELL arrows) */
+    if (ind.signals?.length) {
+      const C2 = window.ThemeManager.C;
+      ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+      for (let i = sIdx; i < eIdx && i < win.data.length && i < ind.signals.length; i++) {
+        const sig = ind.signals[i];
+        if (!sig?.signal || sig.signal === 'NEUTRAL') continue;
+        const d = win.data[i];
+        const x = xOf(i); // FIX: was inline AP + ... calculation
+        const isBuy = sig.signal === 'BUY';
+        const arrowY = isBuy ? priceY(d.low) + 18 : priceY(d.high) - 18;
+        ctx.fillStyle = isBuy ? C2.up : C2.dn;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(isBuy ? '▲' : '▼', x, arrowY);
+        if (sig.label) {
+          ctx.font = '7px monospace';
+          ctx.fillText(sig.label, x, arrowY + (isBuy ? 11 : -11));
+          ctx.font = 'bold 11px monospace';
+        }
+      }
+    }
+  });
+
+  ctx.restore();
+}
 
   /* ─── Drawing Tools ─── */
   function drawTools(ctx, win, W, H, AP, vis, priceY, xOf) {

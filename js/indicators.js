@@ -1,19 +1,9 @@
-/**
- * TixWatcher — Indicators Module
- * Pure technical-analysis functions + scripting engine (compile/run user code).
- */
-
 'use strict';
 
-/* ═══════════════════════════════════════════════════════════
-   INDICATORS — math library
-═══════════════════════════════════════════════════════════ */
 const Indicators = (() => {
   const closes  = data => data.map(d => d.close);
-  const volumes = data => data.map(d => d.volume);
   const nullArr = n    => Array(n).fill(null);
 
-  /* ── SMA ── */
   function sma(data, period = 14) {
     const src = closes(data);
     return src.map((_, i) => {
@@ -24,7 +14,6 @@ const Indicators = (() => {
     });
   }
 
-  /* ── EMA ── */
   function ema(data, period = 14) {
     const src = closes(data), k = 2 / (period + 1);
     const out = nullArr(src.length);
@@ -34,17 +23,13 @@ const Indicators = (() => {
       if (prev === null) {
         let sum = 0;
         for (let j = i - period + 1; j <= i; j++) sum += src[j];
-        prev = sum / period;
-        out[i] = prev;
-        continue;
+        prev = sum / period; out[i] = prev; continue;
       }
-      prev = src[i] * k + prev * (1 - k);
-      out[i] = prev;
+      prev = src[i] * k + prev * (1 - k); out[i] = prev;
     }
     return out;
   }
 
-  /* ── RSI ── */
   function rsi(data, period = 14) {
     const src = closes(data), out = nullArr(src.length);
     if (src.length < period + 1) return out;
@@ -66,7 +51,6 @@ const Indicators = (() => {
     return out;
   }
 
-  /* ── MACD ── */
   function macd(data, fast = 12, slow = 26, signal = 9) {
     const fe = ema(data, fast), se = ema(data, slow), n = data.length;
     const ml = data.map((_, i) => (fe[i] !== null && se[i] !== null) ? fe[i] - se[i] : null);
@@ -84,7 +68,6 @@ const Indicators = (() => {
     return { macd: ml, signal: sl, histogram: hist };
   }
 
-  /* ── Bollinger Bands ── */
   function bbands(data, period = 20, mult = 2) {
     const src = closes(data), mid = sma(data, period);
     const upper = nullArr(data.length), lower = nullArr(data.length);
@@ -97,7 +80,6 @@ const Indicators = (() => {
     return { upper, mid, lower };
   }
 
-  /* ── VWAP ── */
   function vwap(data) {
     const out = nullArr(data.length);
     let cumTPV = 0, cumVol = 0, prevDate = null;
@@ -105,35 +87,27 @@ const Indicators = (() => {
       const d = data[i], date = new Date(d.time).toDateString();
       if (date !== prevDate) { cumTPV = 0; cumVol = 0; prevDate = date; }
       const tp = (d.high + d.low + d.close) / 3;
-      cumTPV += tp * d.volume;
-      cumVol += d.volume;
+      cumTPV += tp * d.volume; cumVol += d.volume;
       out[i] = cumVol > 0 ? cumTPV / cumVol : d.close;
     }
     return out;
   }
 
-  /* ── ATR ── */
   function atr(data, period = 14) {
     const out = nullArr(data.length);
     if (data.length < 2) return out;
     const trs = [data[0].high - data[0].low];
     for (let i = 1; i < data.length; i++) {
       const prev = data[i - 1].close;
-      trs.push(Math.max(
-        data[i].high - data[i].low,
-        Math.abs(data[i].high - prev),
-        Math.abs(data[i].low  - prev)
-      ));
+      trs.push(Math.max(data[i].high - data[i].low, Math.abs(data[i].high - prev), Math.abs(data[i].low - prev)));
     }
     if (trs.length < period) return out;
     let sum = trs.slice(0, period).reduce((a, b) => a + b, 0);
     out[period - 1] = sum / period;
-    for (let i = period; i < data.length; i++)
-      out[i] = (out[i - 1] * (period - 1) + trs[i]) / period;
+    for (let i = period; i < data.length; i++) out[i] = (out[i - 1] * (period - 1) + trs[i]) / period;
     return out;
   }
 
-  /* ── Stochastic ── */
   function stoch(data, kPeriod = 14, dPeriod = 3) {
     const n = data.length, kLine = nullArr(n), dLine = nullArr(n);
     for (let i = kPeriod - 1; i < n; i++) {
@@ -145,15 +119,12 @@ const Indicators = (() => {
     }
     for (let i = kPeriod + dPeriod - 2; i < n; i++) {
       let sum = 0, cnt = 0;
-      for (let j = i - dPeriod + 1; j <= i; j++) {
-        if (kLine[j] !== null) { sum += kLine[j]; cnt++; }
-      }
+      for (let j = i - dPeriod + 1; j <= i; j++) { if (kLine[j] !== null) { sum += kLine[j]; cnt++; } }
       if (cnt === dPeriod) dLine[i] = sum / dPeriod;
     }
     return { k: kLine, d: dLine };
   }
 
-  /* ── WMA ── */
   function wma(data, period = 14) {
     const src = closes(data), out = nullArr(src.length);
     const denom = (period * (period + 1)) / 2;
@@ -165,20 +136,15 @@ const Indicators = (() => {
     return out;
   }
 
-  /* ── Hull MA ── */
   function hma(data, period = 14) {
     const half = Math.round(period / 2), sqp = Math.round(Math.sqrt(period));
-    const wma1 = wma(data, half);
-    const wma2 = wma(data, period);
-    // raw HMA = 2*wma(half) - wma(period)
+    const wma1 = wma(data, half), wma2 = wma(data, period);
     const rawData = data.map((d, i) => ({
-      ...d,
-      close: wma1[i] !== null && wma2[i] !== null ? 2 * wma1[i] - wma2[i] : d.close
+      ...d, close: wma1[i] !== null && wma2[i] !== null ? 2 * wma1[i] - wma2[i] : d.close
     }));
     return wma(rawData, sqp);
   }
 
-  /* ── Ichimoku (partial: tenkan, kijun) ── */
   function ichimoku(data, tenkan = 9, kijun = 26) {
     const n = data.length;
     const tenkanLine = nullArr(n), kijunLine = nullArr(n);
@@ -193,7 +159,6 @@ const Indicators = (() => {
     return { tenkan: tenkanLine, kijun: kijunLine };
   }
 
-  /* ── OBV (On Balance Volume) ── */
   function obv(data) {
     const out = nullArr(data.length);
     out[0] = data[0].volume;
@@ -205,20 +170,18 @@ const Indicators = (() => {
     return out;
   }
 
-  /* ── CCI ── */
   function cci(data, period = 20) {
     const out = nullArr(data.length);
     for (let i = period - 1; i < data.length; i++) {
       const slice = data.slice(i - period + 1, i + 1);
-      const tp     = slice.map(d => (d.high + d.low + d.close) / 3);
-      const mean   = tp.reduce((s, v) => s + v, 0) / period;
-      const md     = tp.reduce((s, v) => s + Math.abs(v - mean), 0) / period;
+      const tp   = slice.map(d => (d.high + d.low + d.close) / 3);
+      const mean = tp.reduce((s, v) => s + v, 0) / period;
+      const md   = tp.reduce((s, v) => s + Math.abs(v - mean), 0) / period;
       out[i] = md === 0 ? 0 : (tp[tp.length - 1] - mean) / (0.015 * md);
     }
     return out;
   }
 
-  /* ── Williams %R ── */
   function williamsR(data, period = 14) {
     const out = nullArr(data.length);
     for (let i = period - 1; i < data.length; i++) {
@@ -234,12 +197,31 @@ const Indicators = (() => {
   return { sma, ema, rsi, macd, bbands, vwap, atr, stoch, wma, hma, ichimoku, obv, cci, williamsR };
 })();
 
-/* ═══════════════════════════════════════════════════════════
-   INDICATOR ENGINE — compile & run user scripts
-═══════════════════════════════════════════════════════════ */
+
 const IndicatorEngine = (() => {
-  /* ── Presets ── */
+
+  /* ══════════════════════════════════════════════════
+     PRESETS  — including MomentumLaser
+  ══════════════════════════════════════════════════ */
   const PRESETS = {
+    momentum_laser: {
+      name: 'MomentumLaser — BB Squeeze + ATR Target',
+      category: 'Volatility',
+      description: 'Detects BB squeeze breakouts and fires a laser beam to an ATR-projected target box.',
+      code: `const bb20=bb(20,2),atr14=atr(14),ema9v=ema(9),ema21v=ema(21),rsiV=rsi(14);
+if(bb20.upper===null||atr14===null||ema9v===null||ema21v===null||rsiV===null||i<22)return;
+const bbWidth=bb20.upper-bb20.lower;
+const pbb=bb(20,2,i-1);
+const prevBBwidth=(pbb.upper!==null&&pbb.lower!==null)?pbb.upper-pbb.lower:bbWidth;
+const squeezing=bbWidth<prevBBwidth*0.98;
+const prevEma9=ema(9,i-1);
+const bullMomentum=ema9v>ema21v&&prevEma9!==null&&ema9v>prevEma9&&rsiV>52;
+const bearMomentum=ema9v<ema21v&&prevEma9!==null&&ema9v<prevEma9&&rsiV<48;
+const breakoutUp=!squeezing&&close>bb20.upper&&bullMomentum;
+const breakoutDn=!squeezing&&close<bb20.lower&&bearMomentum;
+if(breakoutUp){signal='BUY';label='Laser\u2191';}
+else if(breakoutDn){signal='SELL';label='Laser\u2193';}`
+    },
     sma_cross: {
       name: 'SMA Crossover (20/50)', category: 'Trend',
       description: 'BUY when SMA20 crosses above SMA50',
@@ -247,8 +229,8 @@ const IndicatorEngine = (() => {
 if(i===0)return;
 const pf=sma(20,i-1),ps=sma(50,i-1);
 if(fast!==null&&slow!==null&&pf!==null&&ps!==null){
-  if(pf<=ps&&fast>slow){signal='BUY';label='Cross↑';}
-  else if(pf>=ps&&fast<slow){signal='SELL';label='Cross↓';}
+  if(pf<=ps&&fast>slow){signal='BUY';label='Cross\u2191';}
+  else if(pf>=ps&&fast<slow){signal='SELL';label='Cross\u2193';}
 }`
     },
     rsi_levels: {
@@ -264,8 +246,8 @@ else if(r>70){signal='SELL';label='OB '+r.toFixed(0);}`
       description: 'BUY above upper, SELL below lower',
       code: `const bands=bb(20,2);
 if(bands.upper===null)return;
-if(close>bands.upper){signal='BUY';label='BB↑';}
-else if(close<bands.lower){signal='SELL';label='BB↓';}`
+if(close>bands.upper){signal='BUY';label='BB\u2191';}
+else if(close<bands.lower){signal='SELL';label='BB\u2193';}`
     },
     macd_cross: {
       name: 'MACD Signal Crossover', category: 'Momentum',
@@ -274,8 +256,8 @@ else if(close<bands.lower){signal='SELL';label='BB↓';}`
 if(m.macd===null||m.signal===null||i===0)return;
 const prev=macd(12,26,9,i-1);
 if(prev.macd===null)return;
-if(m.macd>m.signal&&prev.macd<=prev.signal){signal='BUY';label='MACD↑';}
-if(m.macd<m.signal&&prev.macd>=prev.signal){signal='SELL';label='MACD↓';}`
+if(m.macd>m.signal&&prev.macd<=prev.signal){signal='BUY';label='MACD\u2191';}
+if(m.macd<m.signal&&prev.macd>=prev.signal){signal='SELL';label='MACD\u2193';}`
     },
     vwap_cross: {
       name: 'VWAP Cross', category: 'Volume',
@@ -283,16 +265,16 @@ if(m.macd<m.signal&&prev.macd>=prev.signal){signal='SELL';label='MACD↓';}`
       code: `const v=vwap();
 if(!prevClose||i===0)return;
 const pv=vwap(i-1);
-if(prevClose<pv&&close>v){signal='BUY';label='VWAP↑';}
-else if(prevClose>pv&&close<v){signal='SELL';label='VWAP↓';}`
+if(prevClose<pv&&close>v){signal='BUY';label='VWAP\u2191';}
+else if(prevClose>pv&&close<v){signal='SELL';label='VWAP\u2193';}`
     },
     ema_ribbon: {
       name: 'EMA Ribbon (9/21/55)', category: 'Trend',
       description: 'BUY when price above all EMAs',
       code: `const e9=ema(9),e21=ema(21),e55=ema(55);
 if(e9===null||e21===null||e55===null)return;
-if(close>e9&&close>e21&&close>e55&&e9>e21){signal='BUY';label='↑Ribbon';}
-else if(close<e9&&close<e21&&close<e55&&e9<e21){signal='SELL';label='↓Ribbon';}`
+if(close>e9&&close>e21&&close>e55&&e9>e21){signal='BUY';label='\u2191Ribbon';}
+else if(close<e9&&close<e21&&close<e55&&e9<e21){signal='SELL';label='\u2193Ribbon';}`
     },
     rsi_divergence: {
       name: 'RSI Divergence', category: 'Momentum',
@@ -306,14 +288,14 @@ const pHi=data[i-3]?.high,cHi=high;
 if(cHi>pHi&&r<rPrev-2){signal='SELL';label='RSI Div';}`
     },
     cci_signal: {
-      name: 'CCI Signal (±100)', category: 'Oscillator',
-      description: 'BUY when CCI crosses above -100, SELL above +100',
+      name: 'CCI Signal (\xb1100)', category: 'Oscillator',
+      description: 'BUY when CCI crosses above -100',
       code: `const c=cci(20);
 if(c===null||i===0)return;
 const pc=cci(20,i-1);
 if(pc===null)return;
-if(pc<-100&&c>=-100){signal='BUY';label='CCI↑';}
-else if(pc>100&&c<=100){signal='SELL';label='CCI↓';}`
+if(pc<-100&&c>=-100){signal='BUY';label='CCI\u2191';}
+else if(pc>100&&c<=100){signal='SELL';label='CCI\u2193';}`
     },
     ichimoku_cloud: {
       name: 'Ichimoku TK Cross', category: 'Trend',
@@ -321,8 +303,8 @@ else if(pc>100&&c<=100){signal='SELL';label='CCI↓';}`
       code: `const ich=ichimoku(9,26);
 if(ich.tenkan===null||ich.kijun===null||i===0)return;
 const pt=ichimoku(9,26,i-1);
-if(ich.tenkan>ich.kijun&&pt.tenkan<=pt.kijun){signal='BUY';label='TK↑';}
-else if(ich.tenkan<ich.kijun&&pt.tenkan>=pt.kijun){signal='SELL';label='TK↓';}`
+if(ich.tenkan>ich.kijun&&pt.tenkan<=pt.kijun){signal='BUY';label='TK\u2191';}
+else if(ich.tenkan<ich.kijun&&pt.tenkan>=pt.kijun){signal='SELL';label='TK\u2193';}`
     },
     obv_trend: {
       name: 'OBV Trend Confirm', category: 'Volume',
@@ -331,12 +313,14 @@ else if(ich.tenkan<ich.kijun&&pt.tenkan>=pt.kijun){signal='SELL';label='TK↓';}
 const ob=obv(),pob=obv(i-5);
 if(ob===null||pob===null)return;
 const ps=sma(20,i-5),cs=sma(20);
-if(ob>pob&&cs>ps){signal='BUY';label='OBV↑';}
-else if(ob<pob&&cs<ps){signal='SELL';label='OBV↓';}`
+if(ob>pob&&cs>ps){signal='BUY';label='OBV\u2191';}
+else if(ob<pob&&cs<ps){signal='SELL';label='OBV\u2193';}`
     }
   };
 
-  /* ── Compile & run user code against a dataset ── */
+  /* ══════════════════════════════════════════════════
+     COMPILE
+  ══════════════════════════════════════════════════ */
   function compile(userCode, data) {
     if (!data || !data.length) return { signals: [], overlays: {}, error: null };
 
@@ -365,7 +349,6 @@ else if(ob<pob&&cs<ps){signal='SELL';label='OBV↓';}`
       return arr[Math.min(idx, arr.length - 1)] ?? null;
     };
 
-    /* Sandbox function string */
     const wrappedCode = `(function(bar_i,data,_getSma,_getEma,_getRsi,_getAtr,_getBb,_getMacd,_getVwap,_getStoch,_getHma,_getCci,_getWr,_getObv,_getIch,_idxOf){
 const i=bar_i,close=data[bar_i].close,open=data[bar_i].open,high=data[bar_i].high,low=data[bar_i].low,volume=data[bar_i].volume,prevClose=bar_i>0?data[bar_i-1].close:null;
 function sma(p,atI){return _idxOf(_getSma(p),atI,bar_i);}
@@ -412,7 +395,6 @@ return{signal,label};
     return { signals, overlays, error: compileError };
   }
 
-  /* ── Backtest a compiled result ── */
   function backtest(signals, data) {
     if (!signals || !signals.length || !data || !data.length) return null;
     let trades = [], inTrade = false, entry = null, entryIdx = -1;
@@ -437,5 +419,5 @@ return{signal,label};
   return { compile, backtest, getPresets: () => PRESETS };
 })();
 
-window.Indicators     = Indicators;
+window.Indicators      = Indicators;
 window.IndicatorEngine = IndicatorEngine;

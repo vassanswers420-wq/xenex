@@ -1,12 +1,6 @@
-/**
- * TixWatcher — DataProvider Module
- * Handles all market data fetching, caching, live ticks, and subscriptions.
- */
-
 'use strict';
 
 const DataProvider = (() => {
-  /* ─── Constants ─── */
   const CACHE_TTL = 15_000;
   const SYMBOLS = [
     "RELIANCE","TCS","INFY","HDFCBANK","ICICIBANK","SBIN","KOTAKBANK","AXISBANK",
@@ -31,7 +25,6 @@ const DataProvider = (() => {
     "ADANIENT":2250,"ADANIPORTS":780,"GRASIM":1980,"SHREECEM":25800,"APOLLOHOSP":5680
   };
 
-  /* ─── Seeded PRNG ─── */
   function seededRand(seed) {
     let s = seed >>> 0;
     return () => {
@@ -50,7 +43,6 @@ const DataProvider = (() => {
     return h;
   }
 
-  /* ─── Mock Data Generator ─── */
   function generateData(sym) {
     const rand = seededRand(symbolSeed(sym));
     const now = Date.now();
@@ -75,7 +67,6 @@ const DataProvider = (() => {
     return data;
   }
 
-  /* ─── Yahoo Finance Fetch ─── */
   async function fetchYahoo(sym) {
     const proxy = 'https://api.allorigins.win/raw?url=';
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}.NS?interval=1m&range=1d`;
@@ -94,22 +85,18 @@ const DataProvider = (() => {
     })).filter(d => d.close > 0);
   }
 
-  /* ─── Cache & Pending ─── */
   const cache   = new Map();
   const pending = new Map();
   const subbed  = new Set();
-  const listeners = new Map(); // sym → Set of callbacks
+  const listeners = new Map();
 
   function getCached(sym) {
     const c = cache.get(sym);
     return (c && Date.now() - c.ts < CACHE_TTL) ? c.data : null;
   }
-  function setCache(sym, data) {
-    cache.set(sym, { ts: Date.now(), data });
-  }
+  function setCache(sym, data) { cache.set(sym, { ts: Date.now(), data }); }
   const clone = d => ({ ...d });
 
-  /* ─── Public API ─── */
   async function getData(sym) {
     sym = sym.toUpperCase();
     const cached = getCached(sym);
@@ -126,9 +113,7 @@ const DataProvider = (() => {
         const mock = generateData(sym);
         setCache(sym, mock);
         return mock;
-      } finally {
-        pending.delete(sym);
-      }
+      } finally { pending.delete(sym); }
     })();
 
     pending.set(sym, p);
@@ -148,7 +133,6 @@ const DataProvider = (() => {
     return mock.length ? mock[mock.length - 1].close : null;
   }
 
-  /** Prefetch a batch of symbols. */
   async function bootRefresh(syms) {
     cache.clear();
     await Promise.allSettled(
@@ -156,13 +140,11 @@ const DataProvider = (() => {
     );
   }
 
-  /** Flush cache for a specific symbol (or all) and re-fetch. */
   async function invalidate(sym) {
     if (sym) cache.delete(sym.toUpperCase());
     else cache.clear();
   }
 
-  /** Returns {open, high, low, close, volume, change, changePct} summary for a symbol. */
   async function getSummary(sym) {
     const data = await getData(sym);
     if (!data || !data.length) return null;
@@ -181,15 +163,11 @@ const DataProvider = (() => {
 
   function subscribe(s)   { subbed.add(s);    }
   function unsubscribe(s) { subbed.delete(s); }
-
-  /** Watch-list style listener: cb(sym, summary) called after each invalidate. */
   function addListener(sym, cb) {
     if (!listeners.has(sym)) listeners.set(sym, new Set());
     listeners.get(sym).add(cb);
   }
-  function removeListener(sym, cb) {
-    listeners.get(sym)?.delete(cb);
-  }
+  function removeListener(sym, cb) { listeners.get(sym)?.delete(cb); }
 
   return {
     getData, getLastPrice, bootRefresh, invalidate, getSummary,
